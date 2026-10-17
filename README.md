@@ -25,7 +25,7 @@
 
 ## Apps Script の動的ソースをデプロイ
 
-`npm run apps-script:deploy` はサービスアカウントを使い、既存シートの `Tasks` に参照先 ID の列を追加し、既存タスクの値を補完します。旧形式の ID メモも削除します。その後、`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` が示す Drive ファイルへ `apps-script/dynamic/Runtime.js` をアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run apps-script:bootstrap` を実行します。
+`npm run apps-script:deploy` はサービスアカウントを使い、既存シートの `Tasks` に参照先 ID の列を追加し、既存タスクの値を補完します。H 列の `id` は AA 列へ移し、旧形式の ID メモも削除します。その後、`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` が示す Drive ファイルへ `apps-script/dynamic/Runtime.js` をアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run apps-script:bootstrap` を実行します。
 
 サービスアカウントによるデプロイ時更新の検証経緯は [Apps Script のデプロイ時更新に関する検証](docs/apps-script-deploy-feasibility.md) にまとめています。
 
@@ -37,7 +37,7 @@
 
 ## 採用した設計
 
-- `Tasks` の `category`、`assignees`、`round` には参照先の名前を表示します。紐付けには非表示の `categoryId`、`assigneeIds`、`roundId` を使います。担当者の ID は JSON 配列で記録します。名前を変更しても ID による紐付けは維持します。
+- `Tasks` の `category`、`assignees`、`round` には参照先の名前を表示します。AA 列の `id` と AB〜AD 列の `categoryId`、`assigneeIds`、`roundId` は非表示にします。担当者の ID は JSON 配列で記録します。名前を変更しても ID による紐付けは維持します。
 - ID は UUID です。Web 画面からの追加時と、初期設定後に Sheets で行を編集した時に付与します。編集時の自動付与には「GAS → 初期設定」で作るインストール型トリガーが必要です。欠損や重複を検出した場合は Web 画面の読み書きを止めます。コピーした行の ID は自動変更しません。
 - Task の初期ステータスは `Todo`、Round は `Planned` です。Task の名前以外の項目と Round の日付は空欄を許します。日付を入力する場合は `YYYY-MM-DD` とし、Round の終了日は開始日以降にします。進行中の Round は1件までです。
 - Web 画面で保存する際は、読み込んだ行の内容と保存直前の内容を照合します。食い違う場合は再読み込みを求めます。行と列は保存直前に ID と見出しから探し直します。

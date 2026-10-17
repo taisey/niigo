@@ -48,3 +48,39 @@ test('migration preserves an existing categoryId and adds only missing columns',
   assert.equal(writes[0].appendDimension.length, 2);
   assert.equal(writes.filter(request => request.addProtectedRange).length, 2);
 });
+
+test('moves task IDs from H to AA and keeps reference IDs beside them', async () => {
+  const {moveTaskIdToHiddenColumn} = await import('../server/reference-id-migration.js');
+  const headers = Array(29).fill('');
+  headers[7] = 'id';
+  headers[26] = 'categoryId';
+  headers[27] = 'assigneeIds';
+  headers[28] = 'roundId';
+  const values = [headers, Array(29).fill('')];
+  values[1][7] = 'task-1';
+  values[1][26] = 'category-1';
+  values[1][27] = '["member-1"]';
+  values[1][28] = 'round-1';
+  const gateway = {
+    read: async () => ({sheets: [{
+      properties: {title: 'Tasks', sheetId: 10},
+      data: [{rowData: values.map(items => row(...items))}]
+    }]}),
+    write: async requests => {
+      for (const request of requests) {
+        if (request.insertDimension) {
+          for (const items of values) items.splice(request.insertDimension.range.startIndex, 0, '');
+        } else if (request.copyPaste) {
+          for (const items of values) items[request.copyPaste.destination.startColumnIndex] = items[request.copyPaste.source.startColumnIndex];
+        } else if (request.deleteDimension) {
+          for (const items of values) items.splice(request.deleteDimension.range.startIndex, 1);
+        }
+      }
+    }
+  };
+  assert.equal(await moveTaskIdToHiddenColumn(gateway), true);
+  assert.deepEqual(values[0].slice(26, 30), ['id', 'categoryId', 'assigneeIds', 'roundId']);
+  assert.deepEqual(values[1].slice(26, 30), ['task-1', 'category-1', '["member-1"]', 'round-1']);
+  assert.equal(values[0][7], '');
+  assert.equal(await moveTaskIdToHiddenColumn(gateway), false);
+});

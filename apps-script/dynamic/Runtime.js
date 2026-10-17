@@ -21,9 +21,15 @@ function setup() {
       sheet = index === 0 && spreadsheet.getSheets().length === 1 &&
         spreadsheet.getSheets()[0].getLastRow() === 0 ? spreadsheet.getSheets()[0] : spreadsheet.insertSheet(name);
       sheet.setName(name);
-      sheet.getRange(1, 1, 1, NIIGO[name].length).setValues([NIIGO[name]]);
+      if (name === 'Tasks') {
+        sheet.getRange(1, 1, 1, 7).setValues([NIIGO.Tasks.slice(0, 7)]);
+        if (sheet.getMaxColumns() < 30) sheet.insertColumnsAfter(sheet.getMaxColumns(), 30 - sheet.getMaxColumns());
+        sheet.getRange(1, 27, 1, 4).setValues([NIIGO.Tasks.slice(7)]);
+      } else {
+        sheet.getRange(1, 1, 1, NIIGO[name].length).setValues([NIIGO[name]]);
+      }
       sheet.setFrozenRows(1);
-      sheet.getRange(1, 1, 1, NIIGO[name].length).setFontWeight('bold');
+      sheet.getRange(1, 1, 1, name === 'Tasks' ? 7 : NIIGO[name].length).setFontWeight('bold');
     }
   });
   const taskSheet = spreadsheet.getSheetByName('Tasks');

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { GoogleAuth } from 'google-auth-library';
 import { GoogleSheetsGateway } from '../server/google-sheets-gateway.js';
-import { ensureReferenceIdColumns } from '../server/reference-id-migration.js';
+import { ensureReferenceIdColumns, moveTaskIdToHiddenColumn } from '../server/reference-id-migration.js';
 
 const sourceFileId = process.env.NIIGO_APPS_SCRIPT_SOURCE_FILE_ID?.trim();
 if (!sourceFileId) throw new Error('NIIGO_APPS_SCRIPT_SOURCE_FILE_ID is required in .env');
@@ -34,8 +34,11 @@ new Function(code + `\nreturn {${requiredHandlers.join(',')}};`);
 
 const bundle = JSON.stringify({ format: 1, code });
 const sha256 = createHash('sha256').update(bundle).digest('hex');
-const migration = await ensureReferenceIdColumns(new GoogleSheetsGateway(spreadsheetId, credentials));
+const gateway = new GoogleSheetsGateway(spreadsheetId, credentials);
+const migration = await ensureReferenceIdColumns(gateway);
 console.log(`Checked Tasks reference ID columns (${migration.created.join(', ') || 'existing'}, ${migration.backfilled} values backfilled, ${migration.clearedNotes} notes cleared)`);
+const movedTaskId = await moveTaskIdToHiddenColumn(gateway);
+console.log(`Checked Tasks ID column (${movedTaskId ? 'moved to AA' : 'already at AA'})`);
 const auth = new GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/drive'] });
 const client = await auth.getClient();
 const uploadUrl = `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(sourceFileId)}?uploadType=media`;

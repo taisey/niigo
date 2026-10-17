@@ -133,3 +133,35 @@ export async function ensureReferenceIdColumns(gateway) {
   if (requests.length) await gateway.write(requests);
   return {created, backfilled, clearedNotes};
 }
+
+export async function moveTaskIdToHiddenColumn(gateway) {
+  const raw = await gateway.read();
+  const tasks = raw.sheets.find(sheet => sheet.properties?.title === 'Tasks');
+  if (!tasks) return false;
+  const headers = (tasks.data?.[0]?.rowData?.[0]?.values || []).map(item => item?.formattedValue || '');
+  const idColumn = column(headers, 'id');
+  if (idColumn === 26) return false;
+  if (idColumn !== 7 || headers[26] !== 'categoryId' || headers[27] !== 'assigneeIds' || headers[28] !== 'roundId') {
+    throw new Error('Tasks タブの ID 列を移動できません。列の配置を確認してください。');
+  }
+  const sheetId = tasks.properties.sheetId;
+  await gateway.write([
+    {insertDimension: {range: {sheetId, dimension: 'COLUMNS', startIndex: 26, endIndex: 27}, inheritFromBefore: false}},
+    {copyPaste: {
+      source: {sheetId, startColumnIndex: 7, endColumnIndex: 8},
+      destination: {sheetId, startColumnIndex: 26, endColumnIndex: 27},
+      pasteType: 'PASTE_VALUES'
+    }},
+    {deleteDimension: {range: {sheetId, dimension: 'COLUMNS', startIndex: 7, endIndex: 8}}},
+    {insertDimension: {range: {sheetId, dimension: 'COLUMNS', startIndex: 25, endIndex: 26}, inheritFromBefore: false}},
+    {updateDimensionProperties: {
+      range: {sheetId, dimension: 'COLUMNS', startIndex: 26, endIndex: 30},
+      properties: {hiddenByUser: true}, fields: 'hiddenByUser'
+    }},
+    {addProtectedRange: {protectedRange: {
+      range: {sheetId, startColumnIndex: 26, endColumnIndex: 27},
+      description: 'NIIGO ID', warningOnly: true
+    }}}
+  ]);
+  return true;
+}
