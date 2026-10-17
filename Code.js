@@ -29,17 +29,21 @@ function setup() {
   const task = schema_(book.getSheetByName('Tasks'));
   task.sheet.hideColumns(task.columns.id);
   const protections = task.sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-  if (!protections.some(p => p.getDescription() === 'NIIGO ID')) {
+  const idProtection = protections.find(p => p.getDescription() === 'NIIGO ID');
+  if (idProtection) idProtection.setWarningOnly(true);
+  else {
     task.sheet.getRange(1, task.columns.id, task.sheet.getMaxRows()).protect()
-      .setDescription('NIIGO ID');
+      .setDescription('NIIGO ID').setWarningOnly(true);
   }
   for (const name of ['Categories', 'Rounds', 'Members']) {
     const s = schema_(book.getSheetByName(name));
     if (!s.sheet.isColumnHiddenByUser(s.columns.id)) s.sheet.hideColumns(s.columns.id);
-    if (!s.sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE)
-      .some(p => p.getDescription() === 'NIIGO ID')) {
+    const existing = s.sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE)
+      .find(p => p.getDescription() === 'NIIGO ID');
+    if (existing) existing.setWarningOnly(true);
+    else {
       s.sheet.getRange(1, s.columns.id, s.sheet.getMaxRows()).protect()
-        .setDescription('NIIGO ID');
+        .setDescription('NIIGO ID').setWarningOnly(true);
     }
   }
   for (const trigger of ScriptApp.getProjectTriggers()) {
