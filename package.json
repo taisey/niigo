@@ -9,7 +9,7 @@
     "prestart": "npm run build",
     "predev": "npm run build",
     "start": "node --env-file-if-exists=.env dist/server/main.js",
-    "dev": "node --env-file-if-exists=.env dist/server/main.js",
+    "dev": "node --watch --env-file-if-exists=.env dist/server/main.js",
     "gas:create": "node --env-file-if-exists=.env -e \"process.exit(require('node:child_process').spawnSync('bash', ['scripts/create-gas.sh'], {stdio:'inherit'}).status ?? 1)\"",
     "gas:bootstrap": "node --env-file-if-exists=.env -e \"process.exit(require('node:child_process').spawnSync('bash', ['scripts/bootstrap-gas.sh'], {stdio:'inherit'}).status ?? 1)\"",
     "pregas:deploy": "npm run build",
