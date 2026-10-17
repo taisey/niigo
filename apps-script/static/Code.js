@@ -8,7 +8,7 @@ function loadNiigoBundle_() {
   }
   const text = DriveApp.getFileById(NIIGO_DYNAMIC_SOURCE_FILE_ID).getBlob().getDataAsString('UTF-8');
   const bundle = JSON.parse(text);
-  if (!bundle || typeof bundle.code !== 'string' || typeof bundle.sidebarHtml !== 'string') {
+  if (!bundle || typeof bundle.code !== 'string') {
     throw new Error('NIIGO の動的ソースファイルの形式が正しくありません。');
   }
   return bundle;
@@ -19,7 +19,7 @@ function loadNiigoRuntime_() {
   return new Function(
     bundle.code + '\nreturn {' + [
       'setup', 'sheetEdited', 'rebuildValidations', 'getData', 'saveEntity',
-      'closeRound', 'getSelectedTask', 'setSelectedAssignees'
+      'closeRound'
     ].map(name => name + ': ' + name).join(',') + '};'
   )();
 }
@@ -34,8 +34,6 @@ function callNiigo_(name, args) {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('NIIGO')
     .addItem('初期設定', 'setup')
-    .addItem('担当者を選択', 'showAssignees')
-    .addItem('ラウンドを終了', 'showRoundClose')
     .addItem('入力規則を更新', 'rebuildValidations')
     .addToUi();
 }
@@ -48,14 +46,3 @@ function saveEntity(name, item, expected) { return callNiigo_('saveEntity', argu
 function closeRound(roundId, destinations, expected) {
   return callNiigo_('closeRound', arguments);
 }
-function getSelectedTask() { return callNiigo_('getSelectedTask', arguments); }
-function setSelectedAssignees(taskId, ids) { return callNiigo_('setSelectedAssignees', arguments); }
-
-function showSidebar_(mode, title) {
-  const template = HtmlService.createTemplate(loadNiigoBundle_().sidebarHtml);
-  template.mode = mode;
-  SpreadsheetApp.getUi().showSidebar(template.evaluate().setTitle(title));
-}
-
-function showAssignees() { showSidebar_('assignees', '担当者を選択'); }
-function showRoundClose() { showSidebar_('close', 'ラウンドを終了'); }

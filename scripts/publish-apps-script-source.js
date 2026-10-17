@@ -15,14 +15,11 @@ if (!credentials.client_email || !credentials.private_key) {
   throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is missing client_email or private_key');
 }
 
-const [code, sidebarHtml] = await Promise.all([
-  readFile(new URL('../apps-script/dynamic/Code.js', import.meta.url), 'utf8'),
-  readFile(new URL('../apps-script/dynamic/SheetSidebar.html', import.meta.url), 'utf8')
-]);
+const code = await readFile(new URL('../apps-script/dynamic/Code.js', import.meta.url), 'utf8');
 
 const requiredHandlers = [
   'setup', 'sheetEdited', 'rebuildValidations', 'getData', 'saveEntity',
-  'closeRound', 'getSelectedTask', 'setSelectedAssignees'
+  'closeRound'
 ];
 for (const name of requiredHandlers) {
   if (!new RegExp(`function\\s+${name}\\s*\\(`).test(code)) {
@@ -31,7 +28,7 @@ for (const name of requiredHandlers) {
 }
 new Function(code + `\nreturn {${requiredHandlers.join(',')}};`);
 
-const bundle = JSON.stringify({ format: 1, code, sidebarHtml });
+const bundle = JSON.stringify({ format: 1, code });
 const sha256 = createHash('sha256').update(bundle).digest('hex');
 const auth = new GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/drive'] });
 const client = await auth.getClient();

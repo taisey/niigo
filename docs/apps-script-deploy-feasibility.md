@@ -6,9 +6,9 @@
 
 ## 要件
 
-1. Apps Script の処理本体とサイドバーを Git で管理する。
+1. Apps Script の処理本体を Git で管理する。
 2. アプリのデプロイ時に、サービスアカウントだけで処理本体を更新する。毎回の `clasp login` や手動コピーは不要にする。
-3. シートを開く、編集する、メニューを選ぶ、サイドバーから保存する各経路を維持する。
+3. シートを開く、編集する、メニューを選ぶ各経路を維持する。
 4. デプロイが失敗した場合に、更新前のソースへ戻せるようにする。
 
 ## 検証結果
@@ -25,11 +25,11 @@
 
 ## 成立する構成
 
-初回だけ、シートに紐付く Apps Script に固定の起動コードを配置する。`onOpen` は固定コード内でメニューを作り、Drive へはアクセスしない。`sheetEdited` などのインストール型トリガーと、メニュー・`google.script.run` が呼ぶ関数も固定コードに名前を残す。これらの関数が Drive 上のソースを読み込み、対応する処理へ委譲する。[インストール型トリガーは認可が必要なサービスを呼べる](https://developers.google.com/apps-script/guides/triggers/installable)。
+初回だけ、シートに紐付く Apps Script に固定の起動コードを配置する。`onOpen` は固定コード内でメニューを作り、Drive へはアクセスしない。`sheetEdited` などのインストール型トリガーと、メニューが呼ぶ関数も固定コードに名前を残す。これらの関数が Drive 上のソースを読み込み、対応する処理へ委譲する。[インストール型トリガーは認可が必要なサービスを呼べる](https://developers.google.com/apps-script/guides/triggers/installable)。
 
-デプロイでは、Git の `apps-script/Code.js` と `apps-script/SheetSidebar.html` を1つのソースファイルにまとめ、サービスアカウントで既存の Drive ファイルへ書き込む。アップロード後に読み戻して一致を確認する。サイドバーは固定コードが Drive から取得した HTML 文字列を [`HtmlService.createTemplate(html)`](https://developers.google.com/apps-script/reference/html/html-service) に渡す。現在の `createTemplateFromFile('SheetSidebar')` はこの方法に変更する必要がある。
+デプロイでは、Git の `apps-script/dynamic/Code.js` を JSON にまとめ、サービスアカウントで既存の Drive ファイルへ書き込む。アップロード後に読み戻して一致を確認する。
 
-固定コードに残す必要がある公開関数は、`setup`、`onOpen`、`sheetOpened`、`sheetEdited`、`rebuildValidations`、`showAssignees`、`showRoundClose`、`getSelectedTask`、`getData`、`setSelectedAssignees`、`closeRound`、`saveEntity`。特に `google.script.run` とトリガーは Drive 上の関数名を直接発見できないため、同名の委譲関数を固定コードに置く。`setup` がトリガーを作り直しても、その委譲関数名を使う。
+固定コードに残す公開関数は、`setup`、`onOpen`、`sheetEdited`、`rebuildValidations`、`getData`、`saveEntity`、`closeRound`。トリガーは Drive 上の関数名を直接発見できないため、`sheetEdited` などの委譲関数を固定コードに置く。`setup` がトリガーを作り直しても、その委譲関数名を使う。
 
 初回配置と Drive 読み取り権限の承認には、所有者の OAuth 操作が一度必要。`DriveApp` の読み取りに必要なスコープを `appsscript.json` に追加し、トリガー作成者が再承認する。[スコープ追加後のトリガーは手動で再承認が必要](https://developers.google.com/apps-script/guides/services/authorization)。固定コードやマニフェストを後から変更する場合も、Apps Script プロジェクトの更新経路が別途必要になる。
 
@@ -37,7 +37,7 @@
 
 1. clasp の OAuth 認証後、`npm run apps-script:bootstrap` で固定コードを対象プロジェクトへ反映する。
 2. シートのメニューから `setup()` を一度実行し、Drive 読み取り権限を承認して編集トリガーを作る。
-3. `onOpen` のメニュー表示、インストール型 `sheetEdited` の処理、サイドバーと `google.script.run` の呼び出しを確認する。
+3. `onOpen` のメニュー表示とインストール型 `sheetEdited` の処理を確認する。
 4. `npm run apps-script:deploy` 後、次の関数呼び出しから更新後のコードが動くことを確認する。
 
 固定コードの初回配置後、デプロイ時の動的ソース更新はサービスアカウントで実行できる。Apps Script 実機での委譲処理は未確認。また、実行時に Drive の取得が失敗するとシート上の処理も失敗する。ソースを動的に実行するため、Drive ファイルの編集権限はデプロイ用アカウントと管理者に限定する。

@@ -6,7 +6,7 @@
 
 - `web/` はブラウザで動く JavaScript の画面です。シートの列位置やセルのメモを意識せず、Task、Round などのデータとして扱います。
 - `server/` は Web 画面の API と Google Sheets の読み書きを担当します。画面から Google の認証情報を扱いません。
-- `apps-script/static/` はシートのメニューと動的ソース呼び出しを担当します。`apps-script/dynamic/` は Drive から読み込む処理本体とサイドバーで、どちらも Git 管理します。
+- `apps-script/static/` はシートのメニューと動的ソース呼び出しを担当します。`apps-script/dynamic/` は Drive から読み込む処理本体です。どちらも Git 管理します。
 
 ## Google Sheets と Apps Script の準備
 
@@ -25,15 +25,15 @@
 
 ## Apps Script の動的ソースをデプロイ
 
-`npm run apps-script:deploy` は `.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` とサービスアカウント認証情報を使い、`apps-script/dynamic/` のコードとサイドバーを Drive ファイルへまとめてアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run apps-script:bootstrap` を実行します。
+`npm run apps-script:deploy` は `.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` とサービスアカウント認証情報を使い、`apps-script/dynamic/Code.js` を Drive ファイルへアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run apps-script:bootstrap` を実行します。
 
 サービスアカウントによるデプロイ時更新の検証経緯は [Apps Script のデプロイ時更新に関する検証](docs/apps-script-deploy-feasibility.md) にまとめています。
 
 ## シートでの操作
 
-`Tasks` の担当者には、メンバー名をカンマで区切って直接入力できます。複数選択の画面は「NIIGO → 担当者を選択」から開きます。対象のタスク行を選択してから使ってください。
+`Tasks` の担当者には、メンバー名をカンマで区切って直接入力できます。Web 画面ではタスクの編集画面から担当者を選択できます。
 
-ラウンドを終了するときは「NIIGO → ラウンドを終了」を使います。未完了のタスクごとに次のラウンドまたは Backlog を選択できます。`Rounds.status` を直接 `Closed` に変更した場合は元に戻し、この操作へ案内します。列を移動した後は「NIIGO → 入力規則を更新」を実行してください。
+ラウンドを終了するときは Web 画面を使います。未完了のタスクごとに次のラウンドまたはタスク一覧への移動を選択できます。`Rounds.status` をシート上で直接 `Closed` に変更した場合は元に戻し、Web 画面での操作へ案内します。列を移動した後は「NIIGO → 入力規則を更新」を実行してください。
 
 ## 採用した設計
 

@@ -352,7 +352,7 @@ function sheetEdited(e) {
     const single = e.range.getNumRows() === 1 && e.range.getNumColumns() === 1;
     if (single && schema.name === 'Rounds' && editedCol === schema.columns.status && e.value === 'Closed') {
       sheet.getRange(start, editedCol).setValue(e.oldValue || 'Planned');
-      book.toast('NIIGO メニューの「ラウンドを終了」から移動先を選んでください。');
+      book.toast('ラウンドを終了するには、Web 画面で未完了タスクの移動先を選んでください。');
     }
     if (single && schema.name === 'Tasks') {
       const field = Object.keys(REF_COLUMNS).find(key => schema.columns[key] === editedCol);
@@ -392,31 +392,5 @@ function sheetEdited(e) {
       refreshReferences_(schemas, data, schema.name, id, currentName);
     }
     rebuildValidations_(book);
-  });
-}
-
-function getSelectedTask() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const schema = schema_(sheet);
-  if (schema.name !== 'Tasks') throw new Error('Tasks タブのタスク行を選択してください。');
-  const row = sheet.getActiveRange().getRow();
-  if (row < 2) throw new Error('タスク行を選択してください。');
-  const id = sheet.getRange(row, schema.columns.id).getDisplayValue();
-  if (!id) throw new Error('タスクの ID がまだありません。行を編集してから選択してください。');
-  const data = snapshot_();
-  return { task: data.Tasks.find(task => task.id === id), members: data.Members };
-}
-
-function setSelectedAssignees(taskId, ids) {
-  return withLock_(() => {
-    const data = snapshot_();
-    const task = data.Tasks.find(item => item.id === taskId);
-    if (!task) throw new Error('タスクが見つかりません。');
-    if (!Array.isArray(ids) || ids.some(id => !data.Members.some(m => m.id === id))) throw new Error('担当者が不正です。');
-    const schema = schema_(book_().getSheetByName('Tasks'));
-    const cell = schema.sheet.getRange(findRow_(schema, taskId)._row, schema.columns.assignees);
-    cell.setValue(ids.map(id => data.Members.find(m => m.id === id).name).join(', '));
-    cell.setNote(ids.length ? 'NIIGO:' + JSON.stringify(ids) : '');
-    return '担当者を保存しました。';
   });
 }
