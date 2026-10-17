@@ -317,6 +317,7 @@ function rebuildValidations_(book) {
 
 function sheetOpened() {
   SpreadsheetApp.getUi().createMenu('NIIGO')
+    .addItem('初期設定', 'setup')
     .addItem('担当者を選択', 'showAssignees')
     .addItem('ラウンドを終了', 'showRoundClose')
     .addItem('入力規則を更新', 'rebuildValidations')
