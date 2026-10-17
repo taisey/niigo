@@ -277,7 +277,13 @@ function validatePayload_(name, item, data, currentId) {
 }
 
 function writeCell_(schema, row, field, value) {
-  schema.sheet.getRange(row, schema.columns[field]).setValue(value == null ? '' : value);
+  const cell = schema.sheet.getRange(row, schema.columns[field]);
+  if (['due_date', 'start_date', 'end_date'].includes(field)) {
+    cell.setNumberFormat('yyyy-mm-dd');
+    cell.setValue(value ? Utilities.parseDate(value, schema.sheet.getParent().getSpreadsheetTimeZone(), 'yyyy-MM-dd') : '');
+  } else {
+    cell.setValue(value == null ? '' : value);
+  }
 }
 
 function writeRefs_(schema, row, item, data) {

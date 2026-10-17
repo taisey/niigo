@@ -6,6 +6,7 @@ const vm = require('node:vm');
 class Sheet {
   constructor(name, rows) { this.name = name; this.rows = rows; this.notes = {}; }
   getName() { return this.name; }
+  getParent() { return {getSpreadsheetTimeZone: () => 'Etc/UTC'}; }
   getLastRow() { return this.rows.length; }
   getLastColumn() { return this.rows[0].length; }
   getMaxRows() { return 100; }
@@ -18,8 +19,8 @@ class Sheet {
       getColumn() { return column; },
       getNumRows() { return height; },
       getNumColumns() { return width; },
-      getDisplayValues() { return Array.from({length: height}, (_, r) => Array.from({length: width}, (_, c) => String(sheet.rows[row+r-1]?.[column+c-1] ?? ''))); },
-      getDisplayValue() { return String(sheet.rows[row-1]?.[column-1] ?? ''); },
+      getDisplayValues() { return Array.from({length: height}, (_, r) => Array.from({length: width}, (_, c) => display(sheet.rows[row+r-1]?.[column+c-1]))); },
+      getDisplayValue() { return display(sheet.rows[row-1]?.[column-1]); },
       getNote() { return sheet.notes[`${row}:${column}`] || ''; },
       setNote(value) { sheet.notes[`${row}:${column}`] = value; return this; },
       setValue(value) { while (sheet.rows.length < row) sheet.rows.push(Array(sheet.rows[0].length).fill('')); sheet.rows[row-1][column-1] = value; return this; },
@@ -28,6 +29,8 @@ class Sheet {
     };
   }
 }
+
+function display(value) { return value instanceof Date ? value.toISOString().slice(0, 10) : String(value ?? ''); }
 
 function fixture() {
   const sheets = {
@@ -48,7 +51,7 @@ function fixture() {
     },
     PropertiesService: {getScriptProperties: () => ({getProperty: () => 'spreadsheet'})},
     LockService: {getScriptLock: () => ({waitLock() {},releaseLock() {}})},
-    Utilities: {getUuid: () => 'new-id'},
+    Utilities: {getUuid: () => 'new-id', parseDate: value => new Date(`${value}T00:00:00Z`)},
     console
   };
   vm.createContext(context);
@@ -65,6 +68,21 @@ test('reads moved columns and preserves custom cells on update', () => {
   context.saveEntity('Tasks', task, JSON.stringify(data.Tasks[0]));
   assert.equal(sheets.Tasks.rows[1][3], '洗濯物を干す');
   assert.equal(sheets.Tasks.rows[1][0], 'keep');
+});
+
+test('saves task and round dates as native spreadsheet dates', () => {
+  const {context, sheets} = fixture();
+  const task = context.getData().Tasks[0];
+  context.saveEntity('Tasks', {...task, due_date: '2026-12-31'}, JSON.stringify(task));
+  assert.equal(sheets.Tasks.rows[1][4] instanceof Date, true);
+  assert.equal(sheets.Tasks.rows[1][4].toISOString(), '2026-12-31T00:00:00.000Z');
+  assert.equal(context.getData().Tasks[0].due_date, '2026-12-31');
+
+  const round = context.getData().Rounds[0];
+  context.saveEntity('Rounds', {...round, start_date: '2026-10-02', end_date: ''}, JSON.stringify(round));
+  assert.equal(sheets.Rounds.rows[1][4] instanceof Date, true);
+  assert.equal(sheets.Rounds.rows[1][4].toISOString(), '2026-10-02T00:00:00.000Z');
+  assert.equal(sheets.Rounds.rows[1][5], '');
 });
 
 test('round close moves pending tasks and keeps completed tasks and due dates', () => {

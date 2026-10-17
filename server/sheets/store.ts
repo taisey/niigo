@@ -18,6 +18,8 @@ const TASK_STATUSES = ['Todo', 'In Progress', 'Done'];
 const ROUND_STATUSES = ['Planned', 'Active', 'Closed'];
 const REFS: Record<RefField, SheetName> = { category: 'Categories', round: 'Rounds', assignees: 'Members' };
 const REF_ID_COLUMNS: Record<RefField, string> = { category: 'categoryId', round: 'roundId', assignees: 'assigneeIds' };
+const DATE_FIELDS = new Set(['due_date', 'start_date', 'end_date']);
+const SHEETS_EPOCH = Date.UTC(1899, 11, 30);
 
 function readSheet(name: SheetName, sheet: Sheet | undefined): ParsedSheet {
   if (!sheet) throw new Error(`${name} タブがありません。`);
@@ -129,8 +131,17 @@ function validate(name: SheetName, item: Record<string, any>, data: ParsedData, 
 }
 
 function writeCell(sheet: ParsedSheet, row: number, field: string, value: unknown, note?: string) {
-  const cell: {userEnteredValue: {stringValue: string}; note?: string} = {userEnteredValue: {stringValue: value == null ? '' : String(value)}};
+  const text = value == null ? '' : String(value);
+  const cell: {userEnteredValue: {stringValue: string} | {numberValue: number}; userEnteredFormat?: {numberFormat: {type: 'DATE'; pattern: string}}; note?: string} = {
+    userEnteredValue: DATE_FIELDS.has(field) && text
+      ? {numberValue: (Date.parse(`${text}T00:00:00Z`) - SHEETS_EPOCH) / 86400000}
+      : {stringValue: text}
+  };
   let fields = 'userEnteredValue';
+  if (DATE_FIELDS.has(field)) {
+    cell.userEnteredFormat = {numberFormat: {type: 'DATE', pattern: 'yyyy-mm-dd'}};
+    fields += ',userEnteredFormat.numberFormat';
+  }
   if (note !== undefined) { cell.note = note; fields += ',note'; }
   return { updateCells: {
     range: { sheetId: sheet.sheetId, startRowIndex: row, endRowIndex: row + 1,

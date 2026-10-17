@@ -14,6 +14,7 @@ function fixture() {
   };
   const names = Object.keys(rows);
   const notes = {Tasks: {'1:1': 'NIIGO:["r1"]', '1:5': 'NIIGO:["m1"]', '2:1': 'NIIGO:["r1"]'}};
+  const writes = [];
   const gateway = {
     async read() {
       return {sheets: names.map((name, sheetId) => ({
@@ -22,6 +23,7 @@ function fixture() {
       }))};
     },
     async write(requests) {
+      writes.push(...requests);
       for (const request of requests) {
         if (request.appendDimension) continue;
         const {range, rows: changes, fields} = request.updateCells;
@@ -29,13 +31,37 @@ function fixture() {
         const row = range.startRowIndex, column = range.startColumnIndex;
         while (rows[name].length <= row) rows[name].push([]);
         const cell = changes[0].values[0];
-        rows[name][row][column] = cell.userEnteredValue.stringValue;
+        rows[name][row][column] = cell.userEnteredValue.numberValue === undefined
+          ? cell.userEnteredValue.stringValue
+          : new Date(Date.UTC(1899, 11, 30) + cell.userEnteredValue.numberValue * 86400000).toISOString().slice(0, 10);
         if (fields.includes('note')) (notes[name] ||= {})[`${row}:${column}`] = cell.note;
       }
     }
   };
-  return {rows, notes, gateway};
+  return {rows, notes, writes, gateway};
 }
+
+test('writes task and round dates as Sheets date cells', async () => {
+  const {SheetStore} = await import('../dist/server/sheets/store.js');
+  const {gateway, writes} = fixture();
+  const store = new SheetStore(gateway);
+  const task = (await store.read()).Tasks[0];
+  await store.save('Tasks', {...task, due_date: '2026-12-31'}, JSON.stringify(task));
+  const due = writes.find(request => request.updateCells?.range.startColumnIndex === 4)?.updateCells;
+  assert.deepEqual(due.rows[0].values[0].userEnteredValue, {numberValue: 46387});
+  assert.deepEqual(due.rows[0].values[0].userEnteredFormat.numberFormat, {type: 'DATE', pattern: 'yyyy-mm-dd'});
+  assert.match(due.fields, /userEnteredFormat.numberFormat/);
+
+  writes.length = 0;
+  const round = (await store.read()).Rounds[0];
+  await store.save('Rounds', {...round, start_date: '2026-10-02', end_date: ''}, JSON.stringify(round));
+  for (const column of [4, 5]) {
+    const change = writes.find(request => request.updateCells?.range.sheetId === 2 && request.updateCells.range.startColumnIndex === column)?.updateCells;
+    assert.equal(change.rows[0].values[0].userEnteredFormat.numberFormat.type, 'DATE');
+    assert.match(change.fields, /userEnteredFormat.numberFormat/);
+  }
+  assert.deepEqual(writes.find(request => request.updateCells?.range.sheetId === 2 && request.updateCells.range.startColumnIndex === 5).updateCells.rows[0].values[0].userEnteredValue, {stringValue: ''});
+});
 
 test('reads moved columns, writes by ID, and preserves custom cells', async () => {
   const {SheetStore} = await import('../dist/server/sheets/store.js');

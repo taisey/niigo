@@ -84,3 +84,43 @@ test('moves task IDs from H to AA and keeps reference IDs beside them', async ()
   assert.equal(values[0][7], '');
   assert.equal(await moveTaskIdToHiddenColumn(gateway), false);
 });
+
+test('converts existing text dates and formats date columns', async () => {
+  const {migrateDateCells} = await import('../dist/gas/deploy/date-migration.js');
+  const writes = [];
+  const gateway = {
+    read: async () => ({sheets: [
+      {properties: {title: 'Tasks', sheetId: 10}, data: [{rowData: [
+        row('id', 'due_date'),
+        row('t1', {formattedValue: '2026-10-20', userEnteredValue: {stringValue: '2026-10-20'}}),
+        row('t2', {formattedValue: '2026-10-21', userEnteredValue: {numberValue: 46316}})
+      ]}]},
+      {properties: {title: 'Rounds', sheetId: 40}, data: [{rowData: [
+        row('id', 'start_date', 'end_date'),
+        row('r1', {formattedValue: '2026-10-01', userEnteredValue: {stringValue: '2026-10-01'}},
+          {formattedValue: '', userEnteredValue: {stringValue: ''}})
+      ]}]}
+    ]}),
+    write: async requests => {writes.push(...requests);}
+  };
+  assert.equal(await migrateDateCells(gateway), 2);
+  assert.equal(writes.filter(request => request.updateCells).length, 2);
+  assert.deepEqual(writes.find(request => request.updateCells?.range.sheetId === 10).updateCells.rows[0].values[0].userEnteredValue,
+    {numberValue: (Date.UTC(2026, 9, 20) - Date.UTC(1899, 11, 30)) / 86400000});
+  assert.equal(writes.filter(request => request.repeatCell).length, 3);
+  assert.ok(writes.every(request => request.updateCells || request.repeatCell.cell.userEnteredFormat.numberFormat.type === 'DATE'));
+});
+
+test('rejects invalid existing text dates before any cell changes', async () => {
+  const {migrateDateCells} = await import('../dist/gas/deploy/date-migration.js');
+  let writes = 0;
+  const gateway = {
+    read: async () => ({sheets: [
+      {properties: {title: 'Tasks', sheetId: 10}, data: [{rowData: [row('due_date'), row({formattedValue: '2026-02-30', userEnteredValue: {stringValue: '2026-02-30'}})]}]},
+      {properties: {title: 'Rounds', sheetId: 40}, data: [{rowData: [row('start_date', 'end_date')]}]}
+    ]}),
+    write: async () => {writes++;}
+  };
+  await assert.rejects(migrateDateCells(gateway), /Tasks タブの 2 行目 due_date/);
+  assert.equal(writes, 0);
+});
