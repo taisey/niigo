@@ -427,7 +427,3 @@ function setSelectedAssignees(taskId, ids) {
     return '担当者を保存しました。';
   });
 }
-
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index').setTitle('NIIGO');
-}

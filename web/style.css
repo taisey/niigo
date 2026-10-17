@@ -1,0 +1,26 @@
+:root { font-family: system-ui, sans-serif; color: #263238; background: #f7f8f6; }
+    body { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    header, nav, .toolbar, .row { display: flex; align-items: center; gap: 12px; }
+    header { justify-content: space-between; }
+    h1 { font-size: 1.7rem; margin: 0 0 8px; }
+    h2 { font-size: 1.25rem; }
+    nav { margin: 24px 0; flex-wrap: wrap; }
+    button { border: 1px solid #bccbc4; background: white; color: #244337; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+    button.primary, button.active { background: #236b4b; color: white; border-color: #236b4b; }
+    button:disabled { opacity: .5; cursor: default; }
+    .toolbar { justify-content: space-between; flex-wrap: wrap; }
+    .cards { display: grid; gap: 12px; margin-top: 16px; }
+    article, .panel { background: white; border: 1px solid #dce4dd; border-radius: 12px; padding: 16px; }
+    article { cursor: pointer; }
+    article h3 { margin: 0 0 6px; }
+    .muted { color: #60736b; font-size: .9rem; }
+    .error { color: #a02525; background: #fff0ee; padding: 12px; border-radius: 8px; margin: 12px 0; }
+    .empty { color: #60736b; padding: 28px; text-align: center; }
+    dialog { border: 1px solid #dce4dd; border-radius: 12px; padding: 24px; width: min(560px, calc(100vw - 48px)); max-height: 85vh; overflow: auto; }
+    dialog::backdrop { background: #17261db8; }
+    label { display: grid; gap: 4px; margin: 10px 0; font-size: .9rem; }
+    input, textarea, select { width: 100%; box-sizing: border-box; padding: 9px; border: 1px solid #aabbb0; border-radius: 7px; font: inherit; }
+    select[multiple] { min-height: 110px; }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    .row { justify-content: space-between; border-bottom: 1px solid #edf0ed; padding: 10px 0; }
+    @media (max-width: 600px) { body { padding: 14px; } .row { align-items: flex-start; flex-direction: column; } }
