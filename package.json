@@ -1,6 +1,7 @@
 {
   "name": "niigo",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "generate:api": "openapi --input server/spec/openapi.yaml --output web/api-generated --client fetch --useOptions && node server/spec/patch-generated-api-imports.mjs && node server/spec/generate-server-router.mjs",

@@ -25,6 +25,8 @@ test('serves the compiled TypeScript UI and routes data requests', async () => {
     const service = await fetch(`${root}/api-client/services/DataService.js`);
     assert.equal(service.status, 200);
     assert.match(await service.text(), /class DataService/);
+    const missingAsset = await fetch(`${root}/api-client/models/Nonexistent.js`);
+    assert.equal(missingAsset.status, 404);
     const data = await fetch(`${root}/data`);
     assert.deepEqual(await data.json(), {Tasks: [], Categories: [], Rounds: [], Members: []});
     const save = await fetch(`${root}/save`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({name: 'Tasks', item: {title: '洗濯'}})});

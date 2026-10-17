@@ -261,7 +261,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       if (!closing) return;
       const tasks = data.Tasks.filter(t => t.roundIds.includes(id) && t.status !== 'Done');
       const choices = data.Rounds.filter(r => r.id !== id && r.status !== 'Closed');
-      element('closeFields').innerHTML = tasks.length ? tasks.map(t => '<label>' + esc(t.title) + '<select data-task="' + esc(t.id) + '"><option value="">Backlog</option>' + choices.map(r => '<option value="' + esc(r.id) + '">' + esc(r.name) + '</option>').join('') + '</select></label>').join('') : '<p>移動するタスクはありません。</p>';
+      element('closeFields').innerHTML = tasks.length ? tasks.map(t => '<label>' + esc(t.title) + '<select data-task="' + esc(t.id) + '"><option value="">タスク一覧（ラウンドなし）</option>' + choices.map(r => '<option value="' + esc(r.id) + '">' + esc(r.name) + '</option>').join('') + '</select></label>').join('') : '<p>移動するタスクはありません。</p>';
       closer.showModal();
     }
     element('closeForm').addEventListener('submit', async e => {

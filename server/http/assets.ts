@@ -13,7 +13,14 @@ export async function serveAsset(path: string, response: ServerResponse): Promis
     : undefined);
   if (!asset) return false;
   const [filename, type] = asset;
+  let body: Buffer;
+  try {
+    body = await readFile(filename);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
+  }
   response.writeHead(200, {'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff'});
-  response.end(await readFile(filename));
+  response.end(body);
   return true;
 }
