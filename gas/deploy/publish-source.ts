@@ -19,7 +19,7 @@ if (!credentials.client_email || !credentials.private_key) {
   throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is missing client_email or private_key');
 }
 
-const code = await readFile(new URL('../dynamic/Runtime.js', import.meta.url), 'utf8');
+const code = await readFile(new URL('../../../gas/dynamic/Runtime.js', import.meta.url), 'utf8');
 
 const requiredHandlers = [
   'setup', 'sheetEdited', 'getData', 'saveEntity',

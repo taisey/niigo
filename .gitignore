@@ -3,4 +3,4 @@ node_modules/
 .env
 *.swp
 gas/.clasp-build/
-web/api-client/
+dist/

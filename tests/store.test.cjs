@@ -38,7 +38,7 @@ function fixture() {
 }
 
 test('reads moved columns, writes by ID, and preserves custom cells', async () => {
-  const {SheetStore} = await import('../server/store.js');
+  const {SheetStore} = await import('../dist/server/store.js');
   const {rows, gateway} = fixture();
   const store = new SheetStore(gateway);
   const before = (await store.read()).Tasks[0];
@@ -52,7 +52,7 @@ test('reads moved columns, writes by ID, and preserves custom cells', async () =
 });
 
 test('saving a task clears legacy ID notes', async () => {
-  const {SheetStore} = await import('../server/store.js');
+  const {SheetStore} = await import('../dist/server/store.js');
   const {notes, gateway} = fixture();
   const store = new SheetStore(gateway);
   const task = (await store.read()).Tasks[0];
@@ -62,7 +62,7 @@ test('saving a task clears legacy ID notes', async () => {
 });
 
 test('renaming a master retains task references', async () => {
-  const {SheetStore} = await import('../server/store.js');
+  const {SheetStore} = await import('../dist/server/store.js');
   const {rows, gateway} = fixture();
   const store = new SheetStore(gateway);
   const category = (await store.read()).Categories[0];
@@ -72,7 +72,7 @@ test('renaming a master retains task references', async () => {
 });
 
 test('category ID remains linked when its displayed task label is stale', async () => {
-  const {SheetStore} = await import('../server/store.js');
+  const {SheetStore} = await import('../dist/server/store.js');
   const {rows, gateway} = fixture();
   rows.Categories[1][0] = '暮らし';
   const data = await new SheetStore(gateway).read();
@@ -80,7 +80,7 @@ test('category ID remains linked when its displayed task label is stale', async 
 });
 
 test('assignee ID remains linked when its displayed name is stale', async () => {
-  const {SheetStore} = await import('../server/store.js');
+  const {SheetStore} = await import('../dist/server/store.js');
   const {rows, gateway} = fixture();
   rows.Members[1][0] = '花子';
   const data = await new SheetStore(gateway).read();
@@ -88,7 +88,7 @@ test('assignee ID remains linked when its displayed name is stale', async () => 
 });
 
 test('closing a round moves pending tasks and retains completed tasks', async () => {
-  const {SheetStore} = await import('../server/store.js');
+  const {SheetStore} = await import('../dist/server/store.js');
   const {rows, gateway} = fixture();
   const store = new SheetStore(gateway);
   const round = (await store.read()).Rounds[0];
@@ -101,7 +101,7 @@ test('closing a round moves pending tasks and retains completed tasks', async ()
 });
 
 test('duplicate header stops writes before reaching Sheets', async () => {
-  const {SheetStore} = await import('../server/store.js');
+  const {SheetStore} = await import('../dist/server/store.js');
   const {rows, gateway} = fixture();
   rows.Tasks[0][0] = 'title';
   let writes = 0;
@@ -111,7 +111,7 @@ test('duplicate header stops writes before reaching Sheets', async () => {
 });
 
 test('creates a task without a category or round', async () => {
-  const {SheetStore} = await import('../server/store.js');
+  const {SheetStore} = await import('../dist/server/store.js');
   const {rows, gateway} = fixture();
   const store = new SheetStore(gateway);
   const data = await store.save('Tasks', {

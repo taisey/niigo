@@ -4,39 +4,39 @@ const REFERENCES = [
   {visible: 'round', hidden: 'roundId', master: 'Rounds', multiple: false}
 ];
 
-function cell(row, index) {
+function cell(row: SheetRow | undefined, index: number): SheetCell | undefined {
   return row?.values?.[index];
 }
 
-function value(row, index) {
+function value(row: SheetRow | undefined, index: number): string {
   return cell(row, index)?.formattedValue || '';
 }
 
-function column(headers, name) {
+function column(headers: string[], name: string): number {
   const positions = headers.flatMap((header, index) => header === name ? [index] : []);
   if (positions.length !== 1) throw new Error(`${name} 列が${positions.length ? '重複しています。' : 'ありません。'}`);
   return positions[0];
 }
 
-function updateCell(sheetId, row, columnIndex, update, fields) {
+function updateCell(sheetId: number, row: number, columnIndex: number, update: object, fields: string) {
   return {updateCells: {
     range: {sheetId, startRowIndex: row, endRowIndex: row + 1, startColumnIndex: columnIndex, endColumnIndex: columnIndex + 1},
     rows: [{values: [update]}], fields
   }};
 }
 
-function writeValue(sheetId, row, columnIndex, text) {
+function writeValue(sheetId: number, row: number, columnIndex: number, text: string) {
   return updateCell(sheetId, row, columnIndex, {userEnteredValue: {stringValue: text}}, 'userEnteredValue');
 }
 
-function mastersFor(sheet) {
+function mastersFor(sheet: Sheet | undefined) {
   if (!sheet) throw new Error('参照先のタブがありません。');
   const rows = sheet.data?.[0]?.rowData || [];
   const headers = (rows[0]?.values || []).map(item => item?.formattedValue || '');
   const nameColumn = column(headers, 'name');
   const idColumn = column(headers, 'id');
-  const byName = new Map();
-  const byId = new Set();
+  const byName = new Map<string, string>();
+  const byId = new Set<string>();
   for (const row of rows.slice(1)) {
     const name = value(row, nameColumn).trim();
     const id = value(row, idColumn).trim();
@@ -48,7 +48,7 @@ function mastersFor(sheet) {
   return {byName, byId};
 }
 
-function resolveIds(row, visibleColumn, masters, multiple, rowNumber) {
+function resolveIds(row: SheetRow | undefined, visibleColumn: number, masters: ReturnType<typeof mastersFor>, multiple: boolean, rowNumber: number): string[] {
   const visibleCell = cell(row, visibleColumn);
   const note = visibleCell?.note || '';
   if (note.startsWith('NIIGO:')) {
@@ -66,7 +66,7 @@ function resolveIds(row, visibleColumn, masters, multiple, rowNumber) {
   });
 }
 
-export async function ensureReferenceIdColumns(gateway) {
+export async function ensureReferenceIdColumns(gateway: SheetsGateway) {
   const raw = await gateway.read();
   const tasks = raw.sheets.find(sheet => sheet.properties?.title === 'Tasks');
   if (!tasks) return {created: [], backfilled: 0, clearedNotes: 0};
@@ -74,19 +74,19 @@ export async function ensureReferenceIdColumns(gateway) {
   const headers = (rows[0]?.values || []).map(item => item?.formattedValue || '');
   const sheetId = tasks.properties.sheetId;
   const columnCount = tasks.properties.gridProperties?.columnCount;
-  if (!Number.isInteger(columnCount)) throw new Error('Tasks タブの列数を取得できません。');
+  if (typeof columnCount !== 'number' || !Number.isInteger(columnCount)) throw new Error('Tasks タブの列数を取得できません。');
 
   const planned = REFERENCES.map(reference => {
     const visibleColumn = column(headers, reference.visible);
     const existing = headers.flatMap((header, index) => header === reference.hidden ? [index] : []);
     if (existing.length > 1) throw new Error(`Tasks タブの ${reference.hidden} 列が重複しています。`);
-    return {...reference, visibleColumn, existing: existing[0], masters: mastersFor(raw.sheets.find(sheet => sheet.properties?.title === reference.master))};
+    return {...reference, visibleColumn, existing: existing[0], targetColumn: existing[0] ?? -1, masters: mastersFor(raw.sheets.find(sheet => sheet.properties?.title === reference.master))};
   });
   const created = planned.filter(reference => reference.existing === undefined).map(reference => reference.hidden);
   let nextColumn = columnCount;
   for (const reference of planned) reference.targetColumn = reference.existing ?? nextColumn++;
 
-  const requests = [];
+  const requests: object[] = [];
   if (created.length) requests.push({appendDimension: {sheetId, dimension: 'COLUMNS', length: created.length}});
   for (const reference of planned) {
     if (reference.existing !== undefined) continue;
@@ -134,7 +134,7 @@ export async function ensureReferenceIdColumns(gateway) {
   return {created, backfilled, clearedNotes};
 }
 
-export async function moveTaskIdToHiddenColumn(gateway) {
+export async function moveTaskIdToHiddenColumn(gateway: SheetsGateway) {
   const raw = await gateway.read();
   const tasks = raw.sheets.find(sheet => sheet.properties?.title === 'Tasks');
   if (!tasks) return false;
@@ -165,3 +165,4 @@ export async function moveTaskIdToHiddenColumn(gateway) {
   ]);
   return true;
 }
+import type {Sheet, SheetCell, SheetRow, SheetsGateway} from './sheets-types.js';

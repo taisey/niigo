@@ -2,8 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {once} = require('node:events');
 
-test('serves the independent JavaScript UI and routes data requests', async () => {
-  const {createApp} = await import('../server/http.js');
+test('serves the compiled TypeScript UI and routes data requests', async () => {
+  const {createApp} = await import('../dist/server/http.js');
   const server = createApp({
     read: async () => ({Tasks: [], Categories: [], Rounds: [], Members: []}),
     save: async (name, item) => ({name, item}),
@@ -29,7 +29,7 @@ test('serves the independent JavaScript UI and routes data requests', async () =
     assert.deepEqual(await data.json(), {Tasks: [], Categories: [], Rounds: [], Members: []});
     const save = await fetch(`${root}/api/save`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({name: 'Tasks', item: {title: '洗濯'}})});
     assert.deepEqual(await save.json(), {name: 'Tasks', item: {title: '洗濯'}});
-    const {OpenAPI, DataService, RoundsService, TasksService} = await import('../web/api-client/index.js');
+    const {OpenAPI, DataService, RoundsService, TasksService} = await import('../dist/web/api-generated/index.js');
     OpenAPI.BASE = root;
     assert.deepEqual(await DataService.getData(), {Tasks: [], Categories: [], Rounds: [], Members: []});
     assert.deepEqual(await DataService.saveEntity({requestBody: {name: 'Tasks', item: {title: '掃除', status: 'Todo'}, expected: ''}}), {name: 'Tasks', item: {title: '掃除', status: 'Todo'}});

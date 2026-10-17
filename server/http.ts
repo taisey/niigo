@@ -1,18 +1,19 @@
-import {createServer} from 'node:http';
+import {createServer, type IncomingMessage, type ServerResponse} from 'node:http';
 import {readFile} from 'node:fs/promises';
+import type {SheetStore} from './store.js';
 
-const assets = {
-  '/': ['index.html', 'text/html; charset=utf-8'],
-  '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
-  '/style.css': ['style.css', 'text/css; charset=utf-8']
+const assets: Record<string, [URL, string]> = {
+  '/': [new URL('../../web/index.html', import.meta.url), 'text/html; charset=utf-8'],
+  '/app.js': [new URL('../web/app.js', import.meta.url), 'text/javascript; charset=utf-8'],
+  '/style.css': [new URL('../../web/style.css', import.meta.url), 'text/css; charset=utf-8']
 };
 
-function send(response, status, value) {
+function send(response: ServerResponse, status: number, value: unknown) {
   response.writeHead(status, {'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store'});
   response.end(JSON.stringify(value));
 }
 
-async function json(request) {
+async function json(request: IncomingMessage): Promise<Record<string, any>> {
   let content = '';
   for await (const chunk of request) {
     content += chunk;
@@ -22,17 +23,17 @@ async function json(request) {
   catch { throw new Error('JSON を読み取れません。'); }
 }
 
-export function createApp(store) {
+export function createApp(store: SheetStore) {
   return createServer(async (request, response) => {
     try {
-      const path = new URL(request.url, 'http://localhost').pathname;
+      const path = new URL(request.url || '/', 'http://localhost').pathname;
       if (request.method === 'GET' && assets[path]) {
         const [filename, type] = assets[path];
         response.writeHead(200, {'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff'});
-        response.end(await readFile(new URL(`../web/${filename}`, import.meta.url)));
+        response.end(await readFile(filename));
       } else if (request.method === 'GET' && /^\/api-client\/(?:index|(?:core|models|services)\/[A-Za-z][A-Za-z0-9]*)\.js$/.test(path)) {
         response.writeHead(200, {'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff'});
-        response.end(await readFile(new URL(`../web${path}`, import.meta.url)));
+        response.end(await readFile(new URL(`../web/api-generated/${path.slice('/api-client/'.length)}`, import.meta.url)));
       } else if (request.method === 'GET' && path === '/api/data') {
         send(response, 200, await store.read());
       } else if (request.method === 'POST' && path === '/api/save') {
@@ -48,9 +49,10 @@ export function createApp(store) {
         send(response, 200, await store.deleteTask(taskId, expected));
       } else send(response, 404, {error: '見つかりません。'});
     } catch (error) {
-      const message = error.message || '処理に失敗しました。';
-      const status = error.response ? 502 : /変更されました|再読み込み/.test(message) ? 409 : 400;
-      send(response, status, {error: error.response ? 'Google Sheets への接続に失敗しました。' : message});
+      const failure = error as Error & {response?: unknown};
+      const message = failure.message || '処理に失敗しました。';
+      const status = failure.response ? 502 : /変更されました|再読み込み/.test(message) ? 409 : 400;
+      send(response, status, {error: failure.response ? 'Google Sheets への接続に失敗しました。' : message});
     }
   });
 }

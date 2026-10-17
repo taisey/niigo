@@ -26,7 +26,7 @@ function fixture(hasCategoryId = false) {
 }
 
 test('migration creates hidden ID columns and removes legacy ID notes', async () => {
-  const {ensureReferenceIdColumns} = await import('../server/reference-id-migration.js');
+  const {ensureReferenceIdColumns} = await import('../dist/server/reference-id-migration.js');
   const {gateway, writes} = fixture();
   assert.deepEqual(await ensureReferenceIdColumns(gateway), {
     created: ['categoryId', 'assigneeIds', 'roundId'], backfilled: 3, clearedNotes: 3
@@ -40,7 +40,7 @@ test('migration creates hidden ID columns and removes legacy ID notes', async ()
 });
 
 test('migration preserves an existing categoryId and adds only missing columns', async () => {
-  const {ensureReferenceIdColumns} = await import('../server/reference-id-migration.js');
+  const {ensureReferenceIdColumns} = await import('../dist/server/reference-id-migration.js');
   const {gateway, writes} = fixture(true);
   assert.deepEqual(await ensureReferenceIdColumns(gateway), {
     created: ['assigneeIds', 'roundId'], backfilled: 2, clearedNotes: 3
@@ -50,7 +50,7 @@ test('migration preserves an existing categoryId and adds only missing columns',
 });
 
 test('moves task IDs from H to AA and keeps reference IDs beside them', async () => {
-  const {moveTaskIdToHiddenColumn} = await import('../server/reference-id-migration.js');
+  const {moveTaskIdToHiddenColumn} = await import('../dist/server/reference-id-migration.js');
   const headers = Array(29).fill('');
   headers[7] = 'id';
   headers[26] = 'categoryId';

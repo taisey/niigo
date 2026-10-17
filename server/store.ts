@@ -1,4 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import type {DataSnapshot} from '../web/api-generated/models/DataSnapshot.js';
+import type {Sheet, SheetCell, SheetsGateway, Spreadsheet} from './sheets-types.js';
+
+type SheetName = keyof DataSnapshot;
+type SheetRecord = {_row: number; _cells: SheetCell[]; id: string; name: string; [field: string]: any};
+type ParsedSheet = {sheetId: number; rowCount: number; columns: Record<string, number>; rows: SheetRecord[]};
+type ParsedData = Record<SheetName, SheetRecord[]>;
+type RefField = 'category' | 'round' | 'assignees';
 
 export const COLUMNS = Object.freeze({
   Tasks: ['title', 'description', 'due_date', 'status', 'assignees', 'category', 'round', 'id', 'categoryId', 'assigneeIds', 'roundId'],
@@ -8,23 +16,22 @@ export const COLUMNS = Object.freeze({
 });
 const TASK_STATUSES = ['Todo', 'In Progress', 'Done'];
 const ROUND_STATUSES = ['Planned', 'Active', 'Closed'];
-const REFS = { category: 'Categories', round: 'Rounds', assignees: 'Members' };
-const REF_ID_COLUMNS = { category: 'categoryId', round: 'roundId', assignees: 'assigneeIds' };
+const REFS: Record<RefField, SheetName> = { category: 'Categories', round: 'Rounds', assignees: 'Members' };
+const REF_ID_COLUMNS: Record<RefField, string> = { category: 'categoryId', round: 'roundId', assignees: 'assigneeIds' };
 
-function readSheet(name, sheet) {
+function readSheet(name: SheetName, sheet: Sheet | undefined): ParsedSheet {
   if (!sheet) throw new Error(`${name} タブがありません。`);
   const cells = sheet.data?.[0]?.rowData || [];
   const headers = (cells[0]?.values || []).map(cell => cell?.formattedValue || '');
-  const columns = {};
+  const columns: Record<string, number> = {};
   for (const field of COLUMNS[name]) {
     const positions = headers.flatMap((header, index) => header === field ? [index] : []);
     if (positions.length !== 1) throw new Error(`${name} タブのヘッダー「${field}」が${positions.length ? '重複しています。' : 'ありません。'}`);
     columns[field] = positions[0];
   }
   const rows = cells.slice(1).map((values, index) => {
-    const row = { _row: index + 1 };
+    const row = {_row: index + 1, _cells: values?.values || []} as SheetRecord;
     for (const field of COLUMNS[name]) row[field] = values?.values?.[columns[field]]?.formattedValue || '';
-    row._cells = values?.values || [];
     return row;
   }).filter(row => COLUMNS[name].some(field => field !== 'id' && !Object.values(REF_ID_COLUMNS).includes(field) && row[field]));
   const ids = new Set();
@@ -44,9 +51,9 @@ function readSheet(name, sheet) {
   return { sheetId: sheet.properties.sheetId, rowCount: sheet.properties.gridProperties?.rowCount || 0, columns, rows };
 }
 
-function idsFor(cell, visible, masters, multiple) {
+function idsFor(cell: SheetCell | undefined, visible: string, masters: SheetRecord[], multiple: boolean): string[] {
   const labels = visible ? visible.split(',').map(name => name.trim()).filter(Boolean) : [];
-  let ids;
+  let ids: string[] | undefined;
   if (cell?.note?.startsWith('NIIGO:')) {
     try { ids = JSON.parse(cell.note.slice(6)); } catch { /* Use the displayed names. */ }
   }
@@ -61,11 +68,12 @@ function idsFor(cell, visible, masters, multiple) {
   return [...new Set(ids)];
 }
 
-export function parseSnapshot(raw) {
-  const sheets = {};
-  for (const name of Object.keys(COLUMNS)) sheets[name] = readSheet(name, raw.sheets.find(sheet => sheet.properties?.title === name));
+export function parseSnapshot(raw: Spreadsheet): {sheets: Record<SheetName, ParsedSheet>; data: ParsedData} {
+  const sheets = {} as Record<SheetName, ParsedSheet>;
+  for (const name of Object.keys(COLUMNS) as SheetName[]) sheets[name] = readSheet(name, raw.sheets.find(sheet => sheet.properties?.title === name));
   for (const task of sheets.Tasks.rows) {
-    for (const [field, master] of Object.entries(REFS)) {
+    for (const field of Object.keys(REFS) as RefField[]) {
+      const master = REFS[field];
       try {
         const hidden = REF_ID_COLUMNS[field];
         if (task[hidden]) {
@@ -78,15 +86,15 @@ export function parseSnapshot(raw) {
           task[`${field}Ids`] = idsFor(task._cells[sheets.Tasks.columns[field]], task[field], sheets[master].rows, field === 'assignees');
         }
       }
-      catch (error) { throw new Error(`Tasks タブの ${task._row + 1} 行目: ${error.message}`); }
+      catch (error) { throw new Error(`Tasks タブの ${task._row + 1} 行目: ${(error as Error).message}`); }
     }
   }
-  const data = {};
-  for (const name of Object.keys(sheets)) data[name] = sheets[name].rows.map(({_row, _cells, ...row}) => row);
+  const data = {} as ParsedData;
+  for (const name of Object.keys(sheets) as SheetName[]) data[name] = sheets[name].rows.map(({_row, _cells, ...row}) => row as SheetRecord);
   return { sheets, data };
 }
 
-function date(value, label) {
+function date(value: string, label: string): string {
   if (!value) return '';
   const parsed = new Date(`${value}T00:00:00Z`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value) {
@@ -95,12 +103,13 @@ function date(value, label) {
   return value;
 }
 
-function validate(name, item, data, current) {
+function validate(name: SheetName, item: Record<string, any>, data: ParsedData, current: SheetRecord | null) {
   if (name === 'Tasks') {
     if (!String(item.title || '').trim()) throw new Error('タスク名を入力してください。');
     if (!TASK_STATUSES.includes(item.status)) throw new Error('ステータスが不正です。');
     date(item.due_date, '期限');
-    for (const [field, master] of Object.entries(REFS)) {
+    for (const field of Object.keys(REFS) as RefField[]) {
+      const master = REFS[field];
       const ids = item[`${field}Ids`] || [];
       if (!Array.isArray(ids) || (field !== 'assignees' && ids.length > 1) || ids.some(id => !data[master].some(row => row.id === id))) {
         throw new Error(`${field} の参照先が不正です。`);
@@ -119,8 +128,8 @@ function validate(name, item, data, current) {
   }
 }
 
-function writeCell(sheet, row, field, value, note) {
-  const cell = { userEnteredValue: { stringValue: value == null ? '' : String(value) } };
+function writeCell(sheet: ParsedSheet, row: number, field: string, value: unknown, note?: string) {
+  const cell: {userEnteredValue: {stringValue: string}; note?: string} = {userEnteredValue: {stringValue: value == null ? '' : String(value)}};
   let fields = 'userEnteredValue';
   if (note !== undefined) { cell.note = note; fields += ',note'; }
   return { updateCells: {
@@ -130,27 +139,28 @@ function writeCell(sheet, row, field, value, note) {
   } };
 }
 
-function rowFor(sheet, id) {
+function rowFor(sheet: ParsedSheet, id: string): number {
   const matches = sheet.rows.filter(row => row.id === id);
   if (matches.length !== 1) throw new Error('更新対象を一意に特定できません。再読み込みしてください。');
   return matches[0]._row;
 }
 
 export class SheetStore {
-  constructor(gateway) { this.gateway = gateway; this.queue = Promise.resolve(); }
-  async read() { return parseSnapshot(await this.gateway.read()).data; }
-  async #exclusive(fn) {
+  private queue: Promise<void> = Promise.resolve();
+  constructor(private gateway: SheetsGateway) {}
+  async read(): Promise<DataSnapshot> { return parseSnapshot(await this.gateway.read()).data as unknown as DataSnapshot; }
+  async #exclusive<T>(fn: () => Promise<T>): Promise<T> {
     const previous = this.queue;
-    let release;
-    this.queue = new Promise(resolve => { release = resolve; });
+    let release!: () => void;
+    this.queue = new Promise<void>(resolve => { release = resolve; });
     await previous;
     try { return await fn(); } finally { release(); }
   }
-  async save(name, item, expected) {
+  async save(name: SheetName, item: Record<string, any>, expected: string): Promise<DataSnapshot> {
     if (!COLUMNS[name]) throw new Error('未対応のデータです。');
     return this.#exclusive(async () => {
       const {sheets, data} = parseSnapshot(await this.gateway.read());
-      const current = item.id ? data[name].find(row => row.id === item.id) : null;
+      const current = item.id ? data[name].find(row => row.id === item.id) ?? null : null;
       if (item.id && !current) throw new Error('更新対象が見つかりません。再読み込みしてください。');
       if (current && JSON.stringify(current) !== expected) throw new Error('シートが変更されました。再読み込みしてから編集してください。');
       validate(name, item, data, current);
@@ -164,18 +174,19 @@ export class SheetStore {
         requests.push(writeCell(sheet, row, field, item[field] || ''));
       }
       if (name === 'Tasks') {
-        for (const [field, master] of Object.entries(REFS)) {
-          const ids = item[`${field}Ids`] || [];
-          requests.push(writeCell(sheet, row, field, ids.map(ref => data[master].find(record => record.id === ref).name).join(', '), ''));
+        for (const field of Object.keys(REFS) as RefField[]) {
+          const master = REFS[field];
+          const ids: string[] = item[`${field}Ids`] || [];
+          requests.push(writeCell(sheet, row, field, ids.map(ref => data[master].find(record => record.id === ref)!.name).join(', '), ''));
           requests.push(writeCell(sheet, row, REF_ID_COLUMNS[field], field === 'assignees' && ids.length ? JSON.stringify(ids) : ids[0] || ''));
         }
       }
       if (!current) requests.push(writeCell(sheet, row, 'id', id));
       if (name !== 'Tasks' && current && current.name !== item.name) {
-        const field = Object.keys(REFS).find(key => REFS[key] === name);
+        const field = (Object.keys(REFS) as RefField[]).find(key => REFS[key] === name)!;
         for (const task of sheets.Tasks.rows) {
           if (!task[`${field}Ids`].includes(id)) continue;
-          const names = task[`${field}Ids`].map(ref => ref === id ? item.name : data[name].find(record => record.id === ref).name);
+          const names = task[`${field}Ids`].map((ref: string) => ref === id ? item.name : data[name].find(record => record.id === ref)!.name);
           requests.push(writeCell(sheets.Tasks, task._row, field, names.join(', '), ''));
         }
       }
@@ -183,7 +194,7 @@ export class SheetStore {
       return this.read();
     });
   }
-  async deleteTask(taskId, expected) {
+  async deleteTask(taskId: string, expected: string): Promise<DataSnapshot> {
     return this.#exclusive(async () => {
       const {sheets, data} = parseSnapshot(await this.gateway.read());
       const task = data.Tasks.find(item => item.id === taskId);
@@ -198,7 +209,7 @@ export class SheetStore {
       return this.read();
     });
   }
-  async close(roundId, destinations, expected) {
+  async close(roundId: string, destinations: Record<string, string>, expected: string): Promise<DataSnapshot> {
     return this.#exclusive(async () => {
       const {sheets, data} = parseSnapshot(await this.gateway.read());
       const round = data.Rounds.find(item => item.id === roundId);
@@ -210,7 +221,7 @@ export class SheetStore {
         if (!Object.hasOwn(destinations, task.id)) throw new Error('全ての未完了タスクの移動先を選んでください。');
         const dest = destinations[task.id];
         if (dest && (!data.Rounds.some(item => item.id === dest && item.status !== 'Closed') || dest === roundId)) throw new Error('移動先のラウンドが不正です。');
-        const label = dest ? data.Rounds.find(item => item.id === dest).name : '';
+        const label = dest ? data.Rounds.find(item => item.id === dest)!.name : '';
         requests.push(writeCell(sheets.Tasks, task._row, 'round', label, ''));
         requests.push(writeCell(sheets.Tasks, task._row, 'roundId', dest || ''));
       }

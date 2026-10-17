@@ -4,11 +4,11 @@
 
 ## 構成
 
-- `web/` はブラウザで動く JavaScript の画面です。シートの列位置やセルのメモを意識せず、Task、Round などのデータとして扱います。
-- `server/` は Web 画面の API と Google Sheets の読み書きを担当します。画面から Google の認証情報を扱いません。
-- Web API の I/F は [OpenAPI 定義](server/spec/openapi.yaml)に記載しています。`npm run generate:api` は、この定義から `web/api-generated/` に API クラスを生成し、ブラウザ用の JavaScript を `web/api-client/` に出力します。`npm run dev` と `npm start` の前にも自動実行します。画面は生成された API クラスを使用します。
+- `web/app.ts` は画面の TypeScript ソースです。シートの列位置やセルのメモを意識せず、Task、Round などのデータとして扱います。
+- `server/` は TypeScript で Web API と Google Sheets の読み書きを実装します。画面から Google の認証情報を扱いません。
+- Web API の I/F は [OpenAPI 定義](server/spec/openapi.yaml)に記載しています。`npm run generate:api` で API クラスを `web/api-generated/` に生成します。`npm run build` は生成後に画面とサーバーを `dist/` へコンパイルします。`npm run dev` と `npm start` は起動前にビルドします。
 - `gas/static/` はシートのメニューと動的ソース呼び出しを担当します。`gas/dynamic/` は Drive から読み込む処理本体です。どちらも Git 管理します。
-- `scripts/` はローカルの `clasp` で固定コードを反映します。`gas/deploy/` はサービスアカウントで動的コードを反映します。`gas/.clasp-build/` は `clasp` 用の生成物です。
+- `scripts/` はローカルの `clasp` で固定コードを反映します。`gas/deploy/` は TypeScript で書いたデプロイ処理を使い、サービスアカウントで動的コードを反映します。`gas/.clasp-build/` は `clasp` 用の生成物です。
 
 ## Google Sheets と Apps Script の準備
 
