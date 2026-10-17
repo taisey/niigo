@@ -12,7 +12,7 @@
 
 ## Google Sheets と Apps Script の準備
 
-作成済みの シート には、4タブと Apps Script プロジェクトを配置済みです。`npm install` の後、`.env` に動的ソース用 Drive ファイルの ID（`NIIGO_APPS_SCRIPT_SOURCE_FILE_ID`）と Apps Script プロジェクトの ID（`NIIGO_GAS_SCRIPT_ID`）を設定し、`npm run gas:bootstrap` を実行します。このコマンドは `gas/.clasp.json.example` から `.clasp.json` を毎回生成し、ローカルの `clasp push --force` で固定コードを反映します。初回は clasp の Google OAuth が必要です。その後、シートの「GAS → 初期設定」を一度実行して Drive 読み取りと編集トリガーの権限を承認します。初期設定では、既存行の ID 欠損も補完します。
+NIIGO はスプレッドシートの `Tasks`、`Categories`、`Rounds`、`Members` の4タブと、シートに紐付く Apps Script プロジェクトを使います。`npm install` の後、`.env` に動的ソース用 Drive ファイルの ID（`NIIGO_APPS_SCRIPT_SOURCE_FILE_ID`）と Apps Script プロジェクトの ID（`NIIGO_GAS_SCRIPT_ID`）を設定し、`npm run gas:bootstrap` を実行します。このコマンドは `gas/.clasp.json.example` から `.clasp.json` を毎回生成し、ローカルの `clasp push --force` で固定コードを反映します。初回は clasp の Google OAuth が必要です。その後、シートの「GAS → 初期設定」を一度実行して Drive 読み取りと編集トリガーの権限を承認します。初期設定では、既存行の ID 欠損も補完します。
 
 新しい Space を作る場合は、`.env` にスプレッドシートの ID を設定して `npm run gas:create` を一度実行します。作成された `.clasp.json` の `scriptId` を `.env` の `NIIGO_GAS_SCRIPT_ID` に設定し、動的ソース用の Drive ファイル ID も設定してから `npm run gas:bootstrap` を実行します。`gas:create` はスプレッドシートに紐付く Apps Script プロジェクトを作成します。動的ソース用の Drive ファイルは別途用意してください。
 
