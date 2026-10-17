@@ -5,3 +5,4 @@ node_modules/
 gas/.clasp-build/
 dist/
 web/api-generated/
+server/http/generated-routes.ts

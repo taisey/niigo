@@ -1,11 +1,8 @@
 import type {IncomingMessage} from 'node:http';
 import type {SheetStore} from '../sheets/store.js';
+import type {OperationId} from './generated-routes.js';
 
-type Route = {
-  method: string;
-  path: RegExp;
-  handle: (request: IncomingMessage, match: RegExpMatchArray) => Promise<unknown>;
-};
+type Handler = (request: IncomingMessage, params: Record<string, string>) => Promise<unknown>;
 
 async function json(request: IncomingMessage): Promise<Record<string, any>> {
   let content = '';
@@ -17,28 +14,22 @@ async function json(request: IncomingMessage): Promise<Record<string, any>> {
   catch { throw new Error('JSON を読み取れません。'); }
 }
 
-export function routes(store: SheetStore): Route[] {
-  const handlers = {
+export function handlers(store: SheetStore): Record<OperationId, Handler> {
+  return {
     getData: () => store.read(),
-    saveEntity: async (request: IncomingMessage) => {
+    saveEntity: async request => {
       const {name, item, expected} = await json(request);
       return store.save(name, item, expected);
     },
-    closeRound: async (request: IncomingMessage) => {
+    closeRound: async request => {
       const {roundId, destinations, expected} = await json(request);
       return store.close(roundId, destinations, expected);
     },
-    deleteTask: async (request: IncomingMessage, match: RegExpMatchArray) => {
-      const taskId = decodeURIComponent(match[1]);
+    deleteTask: async (request, params) => {
+      const taskId = params.taskId;
       if (!taskId) throw new Error('削除対象のタスクを指定してください。');
       const {expected} = await json(request);
       return store.deleteTask(taskId, expected);
     }
   };
-  return [
-    {method: 'GET', path: /^\/data$/, handle: handlers.getData},
-    {method: 'POST', path: /^\/save$/, handle: handlers.saveEntity},
-    {method: 'POST', path: /^\/rounds\/close$/, handle: handlers.closeRound},
-    {method: 'DELETE', path: /^\/tasks\/(.*)$/, handle: handlers.deleteTask}
-  ];
 }
