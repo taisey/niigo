@@ -29,8 +29,9 @@ let editing: {name: EntityName; item: EditableItem | null; defaults: EditableIte
 let closing: Round | null = null;
 let viewingDetail: {name: EntityName; id: string} | null = null;
 let viewingTaskId: string | null = null, draggedTaskId: string | null = null;
-let draggedGroup: {name: 'Categories' | 'Rounds'; id: string; taskId: string} | null = null;
-let touchDrag: {pointerId: number; startX: number; startY: number; group: 'Categories' | 'Rounds'; groupId: string; taskId: string; handle: HTMLElement; moved: boolean} | null = null;
+let draggedGroup: {id: string; taskId: string} | null = null;
+let touchDrag: {pointerId: number; startX: number; startY: number; groupId: string; taskId: string; handle: HTMLElement; moved: boolean} | null = null;
+const expandedGroups = new Set<string>();
 let editingAssigneeIds = new Set<string>(), saving = false;
 const editor = element('editor') as HTMLDialogElement;
 const closer = element('closer') as HTMLDialogElement;
@@ -39,8 +40,8 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
     const listLabels = { Tasks: 'タスク一覧', Categories: 'カテゴリ一覧', Rounds: 'ラウンド一覧', Members: 'メンバー一覧' };
     const listDescriptions = {
       Tasks: 'タスクは、具体的にやることを一つずつ記録する項目です。',
-      Categories: 'カテゴリは、関連するタスクをまとめる単位です。⠿ をドラッグしてタスクの順番を変更できます。',
-      Rounds: 'ラウンドは、一定期間に取り組むタスクをまとめます。⠿ をドラッグしてタスクの順番を変更できます。',
+      Categories: 'カテゴリをクリックするとタスク一覧が開きます。⠿ をドラッグして順番を変更できます。',
+      Rounds: 'ラウンドをクリックすると、タスクをカテゴリ別に確認できます。',
       Members: 'メンバーは、タスクの担当者として設定できます。'
     };
     const taskStatus: Record<string, string> = {Todo: '未着手', 'In Progress': '進行中', Done: '完了'};
@@ -53,7 +54,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       saveEntity: (name: EntityName, item: EditableItem, expected: string) => DataService.saveEntity({requestBody: {name, item, expected} as SaveRequest}),
       closeRound: (roundId: string, destinations: Record<string, string>, expected: string) => RoundsService.closeRound({requestBody: {roundId, destinations, expected}}),
       deleteTask: (taskId: string, expected: string) => TasksService.deleteTask({taskId, requestBody: {expected}}),
-      reorderTask: (taskId: string, beforeTaskId: string, group: 'Categories' | 'Rounds', groupId: string, expectedOrder: string[]) => TasksService.reorderTask({requestBody: {taskId, beforeTaskId, group, groupId, expectedOrder} as ReorderRequest})
+      reorderTask: (taskId: string, beforeTaskId: string, groupId: string, expectedOrder: string[]) => TasksService.reorderTask({requestBody: {taskId, beforeTaskId, group: 'Categories', groupId, expectedOrder} as ReorderRequest})
     };
     const call = async (name: keyof typeof operations, ...args: any[]): Promise<DataSnapshot> => {
       try {
@@ -90,37 +91,49 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       element('nav').innerHTML = tabs.map(([id, label]) => '<button class="' + ((id === 'dashboard' ? view === 'dashboard' : view !== 'dashboard') ? 'active' : '') + '" data-view="' + id + '">' + label + '</button>').join('');
     }
     function taskCard(task: Task) {
-      const roundNames = (task.roundIds || []).map(id => data.Rounds.find(round => round.id === id)?.name).filter(Boolean);
-      return '<article role="button" tabindex="0" draggable="true" data-drag-task="' + esc(task.id) + '" data-task-detail="' + esc(task.id) + '"><h3>' + esc(task.title) + '</h3>' + categoryBadges(task) + '<div class="task-details">' + statusBadge(task.status) + (roundNames.length ? '<span>🔄 ラウンド: ' + esc(roundNames.join('、')) + '</span>' : '') + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>👤 担当者: ' + esc(task.assignees) + '</span>' : '') + '</div>' + (task.description ? '<p>' + esc(task.description) + '</p>' : '') + '</article>';
+      return '<article class="kanban-task-row" role="button" tabindex="0" draggable="true" data-drag-task="' + esc(task.id) + '" data-task-detail="' + esc(task.id) + '"><strong>' + esc(task.title) + '</strong>' + (task.due_date ? '<span class="muted">期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span class="muted">👤 ' + esc(task.assignees) + '</span>' : '') + '</article>';
     }
     function taskListRow(task: Task) {
       const rounds = (task.roundIds || []).map(id => data.Rounds.find(round => round.id === id)?.name).filter(Boolean);
       return '<div class="task-row task-row-clickable" role="button" tabindex="0" data-task-detail="' + esc(task.id) + '"><div class="task-row-heading"><strong>' + esc(task.title) + '</strong><div class="task-actions"><button class="icon-button" aria-label="' + esc(task.title) + 'を編集" title="編集" data-edit="Tasks" data-id="' + esc(task.id) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="icon-button" aria-label="' + esc(task.title) + 'を削除" title="削除" data-delete-task="' + esc(task.id) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></div></div>' + categoryBadges(task) + '<div class="task-details">' + statusBadge(task.status) + '<span>🔄 ラウンド: ' + esc(rounds.join('、') || '未設定') + '</span>' + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>👤 担当者: ' + esc(task.assignees) + '</span>' : '') + '</div></div>';
     }
-    function groupTaskList(name: 'Categories' | 'Rounds', id: string, tasks: Task[]) {
-      return '<div class="group-task-list" data-reorder-group="' + name + '" data-group-id="' + esc(id) + '">' +
-        (tasks.length ? tasks.map(task => '<div class="group-task-row" data-reorder-task="' + esc(task.id) + '">' +
-          '<button type="button" class="drag-handle" draggable="true" data-drag-reorder="' + esc(task.id) + '" aria-label="' + esc(task.title) + 'の順番を変更" title="ドラッグ、または上下矢印キーで並べ替え">⠿</button>' +
-          '<button type="button" class="group-task-title" data-task-detail="' + esc(task.id) + '">' + esc(task.title) + '</button>' +
-          statusBadge(task.status) + (task.due_date ? '<span class="muted group-task-date">期限: ' + esc(task.due_date) + '</span>' : '') +
-          '</div>').join('') : '<div class="group-task-empty">タスクはありません。</div>') + '</div>';
+    function tasksByCategory(tasks: Task[]) {
+      const groups = data.Categories.map(category => ({id: category.id, name: category.name, tasks: tasks.filter(task => task.categoryIds.includes(category.id))})).filter(group => group.tasks.length);
+      const uncategorized = tasks.filter(task => !task.categoryIds.some(id => data.Categories.some(category => category.id === id)));
+      if (uncategorized.length) groups.push({id: '', name: 'カテゴリ未設定', tasks: uncategorized});
+      return groups;
     }
-    function groupDropTarget(x: number, y: number, group: 'Categories' | 'Rounds', groupId: string, taskId: string) {
+    function groupedTaskCards(tasks: Task[]) {
+      return tasksByCategory(tasks).map(group => '<section class="kanban-category"><h4>📁 ' + esc(group.name) + '</h4>' + group.tasks.map(taskCard).join('') + '</section>').join('');
+    }
+    function groupTaskRow(task: Task, reorderable: boolean) {
+      return '<div class="group-task-row"' + (reorderable ? ' data-reorder-task="' + esc(task.id) + '"' : '') + '>' +
+        (reorderable ? '<button type="button" class="drag-handle" draggable="true" data-drag-reorder="' + esc(task.id) + '" aria-label="' + esc(task.title) + 'の順番を変更" title="ドラッグ、または上下矢印キーで並べ替え">⠿</button>' : '') +
+        '<button type="button" class="group-task-title" data-task-detail="' + esc(task.id) + '">' + esc(task.title) + '</button>' +
+        statusBadge(task.status) + (task.due_date ? '<span class="muted group-task-date">期限: ' + esc(task.due_date) + '</span>' : '') + '</div>';
+    }
+    function groupTaskList(name: 'Categories' | 'Rounds', id: string, tasks: Task[]) {
+      const key = name + ':' + id;
+      const content = name === 'Categories' ? tasks.map(task => groupTaskRow(task, true)).join('')
+        : tasksByCategory(tasks).map(group => '<section class="round-category"><h4>📁 ' + esc(group.name) + '</h4>' + group.tasks.map(task => groupTaskRow(task, false)).join('') + '</section>').join('');
+      return '<div id="group-tasks-' + esc(key) + '" class="group-task-list"' + (name === 'Categories' ? ' data-reorder-group="Categories" data-group-id="' + esc(id) + '"' : '') + (expandedGroups.has(key) ? '' : ' hidden') + '>' +
+        (tasks.length ? content : '<div class="group-task-empty">タスクはありません。</div>') + '</div>';
+    }
+    function groupDropTarget(x: number, y: number, groupId: string, taskId: string) {
       const row = document.elementFromPoint(x, y)?.closest<HTMLElement>('.group-task-row[data-reorder-task]');
       const list = row?.closest<HTMLElement>('[data-reorder-group][data-group-id]');
-      if (!row || !list || list.dataset.reorderGroup !== group || list.dataset.groupId !== groupId || row.dataset.reorderTask === taskId) return null;
+      if (!row || !list || list.dataset.groupId !== groupId || row.dataset.reorderTask === taskId) return null;
       const after = y >= row.getBoundingClientRect().top + row.offsetHeight / 2;
       const ids = Array.from(list.querySelectorAll<HTMLElement>('[data-reorder-task]')).map(item => item.dataset.reorderTask!).filter(id => id !== taskId);
       const index = ids.indexOf(row.dataset.reorderTask!);
       return {row, beforeId: after ? ids[index + 1] || '' : row.dataset.reorderTask!, after};
     }
-    async function reorderGroupTask(group: 'Categories' | 'Rounds', groupId: string, taskId: string, beforeTaskId: string) {
-      const field = group === 'Categories' ? 'categoryIds' : 'roundIds';
-      const expectedOrder = data.Tasks.filter(task => task[field].includes(groupId)).map(task => task.id);
+    async function reorderGroupTask(groupId: string, taskId: string, beforeTaskId: string) {
+      const expectedOrder = data.Tasks.filter(task => task.categoryIds.includes(groupId)).map(task => task.id);
       const nextOrder = expectedOrder.filter(id => id !== taskId);
       nextOrder.splice(beforeTaskId ? nextOrder.indexOf(beforeTaskId) : nextOrder.length, 0, taskId);
       if (expectedOrder.join('\0') === nextOrder.join('\0')) return;
-      try { data = await call('reorderTask', taskId, beforeTaskId, group, groupId, expectedOrder); error(''); render(); }
+      try { data = await call('reorderTask', taskId, beforeTaskId, groupId, expectedOrder); error(''); render(); }
       catch (err) { error(errorMessage(err)); }
     }
     function render() {
@@ -131,9 +144,9 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
         const tasks = data.Tasks.filter(task => active.some(round => task.roundIds.includes(round.id)));
         const heading = active.length ? '🔄 ラウンド: ' + active.map(round => round.name).join('、') : '進行中のラウンドはありません';
         const mobileTasks = tasks.filter(task => task.status === mobileDashboardStatus);
-        main.innerHTML = '<div class="toolbar"><div><h2>ダッシュボード</h2><p class="muted">' + esc(heading) + '</p><p class="muted dashboard-desktop-hint">タスクカードをドラッグしてステータスを変更できます。</p></div></div>' + (active.length ? '<div class="mobile-status-tabs">' + Object.entries(taskStatus).map(([status, label]) => '<button class="' + (mobileDashboardStatus === status ? 'active' : '') + '" data-mobile-status="' + status + '">' + label + '</button>').join('') + '</div><section class="mobile-dashboard-column"><h3>' + esc(taskStatus[mobileDashboardStatus]) + '<span class="count">' + mobileTasks.length + '</span></h3><div class="kanban-cards">' + (mobileTasks.length ? mobileTasks.map(taskCard).join('') : '<div class="empty">タスクはありません。</div>') + '</div></section><div class="kanban">' + Object.entries(taskStatus).map(([status, label]) => {
+        main.innerHTML = '<div class="toolbar"><div><h2>ダッシュボード</h2><p class="muted">' + esc(heading) + '</p><p class="muted dashboard-desktop-hint">タスクをドラッグしてステータスを変更できます。</p></div></div>' + (active.length ? '<div class="mobile-status-tabs">' + Object.entries(taskStatus).map(([status, label]) => '<button class="' + (mobileDashboardStatus === status ? 'active' : '') + '" data-mobile-status="' + status + '">' + label + '</button>').join('') + '</div><section class="mobile-dashboard-column"><h3>' + esc(taskStatus[mobileDashboardStatus]) + '<span class="count">' + mobileTasks.length + '</span></h3><div class="kanban-cards">' + (mobileTasks.length ? groupedTaskCards(mobileTasks) : '<div class="empty">タスクはありません。</div>') + '</div></section><div class="kanban">' + Object.entries(taskStatus).map(([status, label]) => {
           const statusTasks = tasks.filter(task => task.status === status);
-          return '<section class="kanban-column" data-drop-status="' + esc(status) + '"><h3>' + esc(label) + '<span class="count">' + statusTasks.length + '</span></h3><div class="kanban-cards">' + (statusTasks.length ? statusTasks.map(taskCard).join('') : '<div class="empty">タスクはありません。</div>') + '</div></section>';
+          return '<section class="kanban-column" data-drop-status="' + esc(status) + '"><h3>' + esc(label) + '<span class="count">' + statusTasks.length + '</span></h3><div class="kanban-cards">' + (statusTasks.length ? groupedTaskCards(statusTasks) : '<div class="empty">タスクはありません。</div>') + '</div></section>';
         }).join('') + '</div>' : '<div class="empty">ラウンド管理から進行中のラウンドを設定してください。</div>');
       } else if (view === 'tasks') {
         main.innerHTML = '<h2>タスク管理</h2><div class="subnav"><button class="active" data-view="tasks">' + listLabels.Tasks + '</button><button data-view="Categories">' + listLabels.Categories + '</button><button data-view="Rounds">' + listLabels.Rounds + '</button><button data-view="Members">' + listLabels.Members + '</button></div><div class="toolbar"><div><div class="task-list-heading"><h3>' + listLabels.Tasks + '</h3><button class="icon-button primary" aria-label="タスクを追加" title="タスクを追加" data-edit="Tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><p class="muted">' + listDescriptions.Tasks + '</p></div></div>' + (data.Tasks.length ? '<div class="task-list">' + data.Tasks.map(taskListRow).join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
@@ -152,7 +165,12 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
             const rowActions = name === 'Categories'
               ? '<div class="row-actions"><button class="icon-button" aria-label="' + esc(item.name) + 'を編集" title="編集" data-edit="Categories" data-id="' + esc(item.id) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="icon-button" aria-label="' + esc(item.name) + 'にタスクを追加" title="タスクに追加" data-add-task-category="' + esc(item.id) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>'
               : '<div><button data-edit="' + name + '" data-id="' + esc(item.id) + '">編集</button> ' + (name === 'Rounds' && itemStatus !== 'Closed' ? '<button data-close="' + esc(item.id) + '">終了</button>' : '') + '</div>';
-            return '<section class="group-section"><div class="row ' + (name === 'Categories' ? 'category-row" role="button" tabindex="0" data-category-detail="' + esc(item.id) : '') + '"><div class="row-main">' + title + (description ? '<div class="muted">' + esc(description) + '</div>' : '') + '</div>' + rowActions + '</div>' + (name === 'Categories' || name === 'Rounds' ? groupTaskList(name, item.id, groupTasks) : '') + '</section>';
+            const content = title + (description ? '<div class="muted">' + esc(description) + '</div>' : '');
+            const key = name + ':' + item.id;
+            const main = grouped
+              ? '<button type="button" class="group-toggle row-main" data-toggle-group="' + name + '" data-group-id="' + esc(item.id) + '" aria-expanded="' + expandedGroups.has(key) + '" aria-controls="group-tasks-' + esc(key) + '"><span class="group-chevron" aria-hidden="true">⌄</span><div class="group-toggle-content">' + content + '</div></button>'
+              : '<div class="row-main">' + content + '</div>';
+            return '<section class="group-section"><div class="row">' + main + rowActions + '</div>' + (name === 'Categories' || name === 'Rounds' ? groupTaskList(name, item.id, groupTasks) : '') + '</section>';
           }).join('') + '</div>' : '<div class="empty">まだありません。</div>');
       }
     }
@@ -178,14 +196,6 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
         '<dt>期限</dt><dd>' + esc(task.due_date || '未設定') + '</dd>' +
         '<dt>詳細</dt><dd class="task-detail-description">' + linkify(task.description || '詳細はありません。') + '</dd></dl>' +
         '<div class="mobile-status-editor"><label>ステータス<select id="detailTaskStatus">' + Object.entries(taskStatus).map(([status, label]) => '<option value="' + status + '" ' + (task.status === status ? 'selected' : '') + '>' + label + '</option>').join('') + '</select></label><button type="button" class="primary" data-save-task-status="' + esc(task.id) + '">ステータスを保存</button></div>';
-      if (!taskDetail.open) taskDetail.showModal();
-    }
-    function openCategoryDetail(id: string) {
-      const category = data.Categories.find(item => item.id === id);
-      if (!category) return;
-      viewingDetail = {name: 'Categories', id};
-      const tasks = data.Tasks.filter(task => (task.categoryIds || []).includes(id));
-      element('taskDetailContent').innerHTML = '<h2>📁 ' + esc(category.name) + '</h2><dl class="task-detail-list"><dt>説明</dt><dd>' + esc(category.description || '説明はありません。') + '</dd><dt>タスク</dt><dd>' + (tasks.length ? tasks.map(task => '<button class="task-link" data-task-detail="' + esc(task.id) + '">' + esc(task.title) + '</button>').join(' ') : 'タスクはありません。') + '</dd></dl>';
       if (!taskDetail.open) taskDetail.showModal();
     }
     async function saveTaskStatus(id: string) {
@@ -320,7 +330,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       const list = handle?.closest<HTMLElement>('[data-reorder-group][data-group-id]');
       if (!handle || !list) return;
       touchDrag = {pointerId: event.pointerId, startX: event.clientX, startY: event.clientY,
-        group: list.dataset.reorderGroup as 'Categories' | 'Rounds', groupId: list.dataset.groupId!,
+        groupId: list.dataset.groupId!,
         taskId: handle.dataset.dragReorder!, handle, moved: false};
       handle.setPointerCapture(event.pointerId);
     });
@@ -329,7 +339,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       if (!touchDrag.moved && Math.hypot(event.clientX - touchDrag.startX, event.clientY - touchDrag.startY) < 8) return;
       touchDrag.moved = true;
       document.querySelectorAll('.group-task-row.drag-before, .group-task-row.drag-after').forEach(row => row.classList.remove('drag-before', 'drag-after'));
-      const target = groupDropTarget(event.clientX, event.clientY, touchDrag.group, touchDrag.groupId, touchDrag.taskId);
+      const target = groupDropTarget(event.clientX, event.clientY, touchDrag.groupId, touchDrag.taskId);
       target?.row.classList.add(target.after ? 'drag-after' : 'drag-before');
     });
     document.addEventListener('pointerup', event => {
@@ -338,8 +348,8 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       touchDrag = null;
       document.querySelectorAll('.group-task-row.drag-before, .group-task-row.drag-after').forEach(row => row.classList.remove('drag-before', 'drag-after'));
       if (!drag.moved) return;
-      const target = groupDropTarget(event.clientX, event.clientY, drag.group, drag.groupId, drag.taskId);
-      if (target) void reorderGroupTask(drag.group, drag.groupId, drag.taskId, target.beforeId);
+      const target = groupDropTarget(event.clientX, event.clientY, drag.groupId, drag.taskId);
+      if (target) void reorderGroupTask(drag.groupId, drag.taskId, target.beforeId);
     });
     document.addEventListener('pointercancel', event => {
       if (touchDrag?.pointerId === event.pointerId) touchDrag = null;
@@ -349,7 +359,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       const handle = (event.target as HTMLElement).closest<HTMLElement>('[data-drag-reorder]');
       const list = handle?.closest<HTMLElement>('[data-reorder-group][data-group-id]');
       if (handle && list && event.dataTransfer) {
-        draggedGroup = {name: list.dataset.reorderGroup as 'Categories' | 'Rounds', id: list.dataset.groupId!, taskId: handle.dataset.dragReorder!};
+        draggedGroup = {id: list.dataset.groupId!, taskId: handle.dataset.dragReorder!};
         handle.closest('.group-task-row')?.classList.add('dragging');
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', draggedGroup.taskId);
@@ -373,7 +383,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
     document.addEventListener('dragover', event => {
       const row = (event.target as HTMLElement).closest<HTMLElement>('.group-task-row[data-reorder-task]');
       const list = row?.closest<HTMLElement>('[data-reorder-group][data-group-id]');
-      if (row && list && draggedGroup && list.dataset.reorderGroup === draggedGroup.name && list.dataset.groupId === draggedGroup.id && event.dataTransfer) {
+      if (row && list && draggedGroup && list.dataset.groupId === draggedGroup.id && event.dataTransfer) {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
         document.querySelectorAll('.group-task-row.drag-before, .group-task-row.drag-after').forEach(item => item.classList.remove('drag-before', 'drag-after'));
@@ -390,13 +400,13 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
     document.addEventListener('drop', async event => {
       const row = (event.target as HTMLElement).closest<HTMLElement>('.group-task-row[data-reorder-task]');
       const list = row?.closest<HTMLElement>('[data-reorder-group][data-group-id]');
-      if (row && list && draggedGroup && list.dataset.reorderGroup === draggedGroup.name && list.dataset.groupId === draggedGroup.id) {
+      if (row && list && draggedGroup && list.dataset.groupId === draggedGroup.id) {
         event.preventDefault();
         const group = draggedGroup;
-        const target = groupDropTarget(event.clientX, event.clientY, group.name, group.id, group.taskId);
+        const target = groupDropTarget(event.clientX, event.clientY, group.id, group.taskId);
         draggedGroup = null;
         document.querySelectorAll('.group-task-row.drag-before, .group-task-row.drag-after').forEach(item => item.classList.remove('drag-before', 'drag-after'));
-        if (target) await reorderGroupTask(group.name, group.id, group.taskId, target.beforeId);
+        if (target) await reorderGroupTask(group.id, group.taskId, target.beforeId);
         return;
       }
       const column = (event.target as HTMLElement).closest<HTMLElement>('.kanban-column[data-drop-status]');
@@ -412,7 +422,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       catch (err) { error(errorMessage(err)); }
     });
     document.addEventListener('click', event => {
-      const button = (event.target as HTMLElement).closest<HTMLElement>('[data-view], [data-edit], [data-close], [data-dismiss], [data-add-task-category], [data-delete-task], [data-add-assignee], [data-remove-assignee], [data-task-detail], [data-category-detail], [data-mobile-status], [data-save-task-status]');
+      const button = (event.target as HTMLElement).closest<HTMLElement>('[data-view], [data-edit], [data-close], [data-dismiss], [data-add-task-category], [data-delete-task], [data-add-assignee], [data-remove-assignee], [data-task-detail], [data-toggle-group], [data-mobile-status], [data-save-task-status]');
       if (!button) return;
       if (button.dataset.addAssignee) {
         editingAssigneeIds.add(button.dataset.addAssignee);
@@ -431,7 +441,15 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       else if (button.dataset.deleteTask) deleteTaskFromList(button.dataset.deleteTask);
       else if (button.dataset.addTaskCategory) openEditor('Tasks', null, {categoryIds: [button.dataset.addTaskCategory]});
       else if (button.dataset.taskDetail) openTaskDetail(button.dataset.taskDetail);
-      else if (button.dataset.categoryDetail) openCategoryDetail(button.dataset.categoryDetail);
+      else if (button.dataset.toggleGroup && button.dataset.groupId) {
+        const key = button.dataset.toggleGroup + ':' + button.dataset.groupId;
+        const list = document.getElementById('group-tasks-' + key);
+        if (!list) return;
+        const expanded = !expandedGroups.has(key);
+        if (expanded) expandedGroups.add(key); else expandedGroups.delete(key);
+        list.hidden = !expanded;
+        button.setAttribute('aria-expanded', String(expanded));
+      }
       else if (button.dataset.edit) openEditor(button.dataset.edit as EntityName, button.dataset.id || null);
       else if (button.dataset.close) openClose(button.dataset.close);
       else if (button.dataset.dismiss) (element(button.dataset.dismiss) as HTMLDialogElement).close();
@@ -447,14 +465,13 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
         const index = ids.indexOf(taskId);
         const beforeId = event.key === 'ArrowUp' ? ids[index - 1] : ids[index + 2] || '';
         if ((event.key === 'ArrowUp' && index > 0) || (event.key === 'ArrowDown' && index >= 0 && index < ids.length - 1)) {
-          void reorderGroupTask(list.dataset.reorderGroup as 'Categories' | 'Rounds', list.dataset.groupId!, taskId, beforeId);
+          void reorderGroupTask(list.dataset.groupId!, taskId, beforeId);
         }
         return;
       }
-      if ((event.key === 'Enter' || event.key === ' ') && target.matches('[data-task-detail][role="button"], [data-category-detail][role="button"]')) {
+      if ((event.key === 'Enter' || event.key === ' ') && target.matches('[data-task-detail][role="button"]')) {
         event.preventDefault();
-        if (target.dataset.categoryDetail) openCategoryDetail(target.dataset.categoryDetail);
-        else if (target.dataset.taskDetail) openTaskDetail(target.dataset.taskDetail);
+        if (target.dataset.taskDetail) openTaskDetail(target.dataset.taskDetail);
       }
     });
     load();
