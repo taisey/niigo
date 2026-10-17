@@ -1,0 +1,29 @@
+{
+  "name": "niigo",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "generate:api": "openapi --input server/spec/openapi.yaml --output web/api-generated --client fetch --useOptions && node server/spec/patch-generated-api-imports.mjs && node server/spec/generate-server-router.mjs",
+    "build": "npm run generate:api && tsc -p tsconfig.json",
+    "prestart": "npm run build",
+    "predev": "npm run build",
+    "start": "node --env-file-if-exists=.env dist/server/main.js",
+    "dev": "node --env-file-if-exists=.env dist/server/main.js",
+    "gas:create": "node --env-file-if-exists=.env -e \"process.exit(require('node:child_process').spawnSync('bash', ['scripts/create-gas.sh'], {stdio:'inherit'}).status ?? 1)\"",
+    "gas:bootstrap": "node --env-file-if-exists=.env -e \"process.exit(require('node:child_process').spawnSync('bash', ['scripts/bootstrap-gas.sh'], {stdio:'inherit'}).status ?? 1)\"",
+    "pregas:deploy": "npm run build",
+    "gas:deploy": "node --env-file-if-exists=.env dist/gas/deploy/publish-source.js",
+    "test": "npm run build && node --test tests/*.test.cjs"
+  },
+  "dependencies": {
+    "google-auth-library": "^10.5.0"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.4.1",
+    "@types/node": "^24.19.2",
+    "js-yaml": "^4.3.2",
+    "openapi-typescript-codegen": "^0.29.0",
+    "typescript": "^5.8.3"
+  }
+}

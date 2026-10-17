@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {"/api-client/*": ["web/api-generated/*"]},
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["server/**/*.ts", "web/**/*.ts", "gas/deploy/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}
