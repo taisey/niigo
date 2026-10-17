@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "rootDir": "web/api-generated",
+    "outDir": "web/api-client",
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["web/api-generated/**/*.ts"]
+}

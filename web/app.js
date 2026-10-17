@@ -1,3 +1,5 @@
+import {ApiError, DataService, RoundsService, TasksService} from '/api-client/index.js';
+
 const validViews = new Set(['dashboard', 'tasks', 'Categories', 'Rounds', 'Members']);
 function restoreView() {
   try {
@@ -21,20 +23,28 @@ const taskDetail = document.getElementById('taskDetail');
     const taskStatus = {Todo: '未着手', 'In Progress': '進行中', Done: '完了'};
     const statusClass = {Todo: 'todo', 'In Progress': 'in-progress', Done: 'done'};
     const roundStatus = {Planned: '計画中', Active: '進行中', Closed: '終了'};
+    const operations = {
+      getData: () => DataService.getData(),
+      saveEntity: (name, item, expected) => DataService.saveEntity({requestBody: {name, item, expected}}),
+      closeRound: (roundId, destinations, expected) => RoundsService.closeRound({requestBody: {roundId, destinations, expected}}),
+      deleteTask: (taskId, expected) => TasksService.deleteTask({taskId, requestBody: {expected}})
+    };
     const call = async (name, ...args) => {
-      const paths = {getData: ['GET', '/api/data'], saveEntity: ['POST', '/api/save'], closeRound: ['POST', '/api/rounds/close'], deleteTask: ['DELETE', '/api/tasks/' + encodeURIComponent(args[0])]};
-      const [method, path] = paths[name];
-      const payload = name === 'saveEntity' ? {name: args[0], item: args[1], expected: args[2]} : name === 'closeRound' ? {roundId: args[0], destinations: args[1], expected: args[2]} : name === 'deleteTask' ? {expected: args[1]} : undefined;
-      const response = await fetch(path, {method, headers: {'content-type': 'application/json'}, ...(payload ? {body: JSON.stringify(payload)} : {})});
-      const result = await response.json();
-      if (response.status === 409) {
-        const latest = await fetch('/api/data');
-        if (!latest.ok) throw new Error('シートの最新データを読み込めませんでした。');
-        error('');
-        return latest.json();
+      try {
+        return await operations[name](...args);
+      } catch (caught) {
+        if (caught instanceof ApiError && caught.status === 409) {
+          try {
+            const latest = await DataService.getData();
+            error('');
+            return latest;
+          } catch {
+            throw new Error('シートの最新データを読み込めませんでした。');
+          }
+        }
+        if (caught instanceof ApiError) throw new Error(caught.body?.error || caught.message);
+        throw caught;
       }
-      if (!response.ok) throw new Error(result.error || '読み込みに失敗しました。');
-      return result;
     };
     const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     function linkify(value) {

@@ -30,6 +30,9 @@ export function createApp(store) {
         const [filename, type] = assets[path];
         response.writeHead(200, {'content-type': type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff'});
         response.end(await readFile(new URL(`../web/${filename}`, import.meta.url)));
+      } else if (request.method === 'GET' && /^\/api-client\/(?:index|(?:core|models|services)\/[A-Za-z][A-Za-z0-9]*)\.js$/.test(path)) {
+        response.writeHead(200, {'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff'});
+        response.end(await readFile(new URL(`../web${path}`, import.meta.url)));
       } else if (request.method === 'GET' && path === '/api/data') {
         send(response, 200, await store.read());
       } else if (request.method === 'POST' && path === '/api/save') {
