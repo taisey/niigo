@@ -38,6 +38,11 @@ export function createApp(store) {
       } else if (request.method === 'POST' && path === '/api/rounds/close') {
         const {roundId, destinations, expected} = await json(request);
         send(response, 200, await store.close(roundId, destinations, expected));
+      } else if (request.method === 'DELETE' && path.startsWith('/api/tasks/')) {
+        const taskId = decodeURIComponent(path.slice('/api/tasks/'.length));
+        if (!taskId) throw new Error('削除対象のタスクを指定してください。');
+        const {expected} = await json(request);
+        send(response, 200, await store.deleteTask(taskId, expected));
       } else send(response, 404, {error: '見つかりません。'});
     } catch (error) {
       const message = error.message || '処理に失敗しました。';

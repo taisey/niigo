@@ -171,6 +171,21 @@ export class SheetStore {
       return this.read();
     });
   }
+  async deleteTask(taskId, expected) {
+    return this.#exclusive(async () => {
+      const {sheets, data} = parseSnapshot(await this.gateway.read());
+      const task = data.Tasks.find(item => item.id === taskId);
+      if (!task) throw new Error('削除対象のタスクが見つかりません。再読み込みしてください。');
+      if (JSON.stringify(task) !== expected) throw new Error('タスクが変更されました。再読み込みしてから削除してください。');
+      const row = rowFor(sheets.Tasks, taskId);
+      await this.gateway.write([{
+        deleteDimension: {
+          range: {sheetId: sheets.Tasks.sheetId, dimension: 'ROWS', startIndex: row, endIndex: row + 1}
+        }
+      }]);
+      return this.read();
+    });
+  }
   async close(roundId, destinations, expected) {
     return this.#exclusive(async () => {
       const {sheets, data} = parseSnapshot(await this.gateway.read());

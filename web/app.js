@@ -5,9 +5,10 @@ const closer = document.getElementById('closer');
     const taskStatus = {Todo: '未着手', 'In Progress': '進行中', Done: '完了'};
     const roundStatus = {Planned: '計画中', Active: '進行中', Closed: '終了'};
     const call = async (name, ...args) => {
-      const paths = {getData: ['GET', '/api/data'], saveEntity: ['POST', '/api/save'], closeRound: ['POST', '/api/rounds/close']};
+      const paths = {getData: ['GET', '/api/data'], saveEntity: ['POST', '/api/save'], closeRound: ['POST', '/api/rounds/close'], deleteTask: ['DELETE', '/api/tasks/' + encodeURIComponent(args[0])]};
       const [method, path] = paths[name];
-      const response = await fetch(path, {method, headers: {'content-type': 'application/json'}, ...(method === 'POST' ? {body: JSON.stringify(name === 'saveEntity' ? {name: args[0], item: args[1], expected: args[2]} : {roundId: args[0], destinations: args[1], expected: args[2]})} : {})});
+      const payload = name === 'saveEntity' ? {name: args[0], item: args[1], expected: args[2]} : name === 'closeRound' ? {roundId: args[0], destinations: args[1], expected: args[2]} : name === 'deleteTask' ? {expected: args[1]} : undefined;
+      const response = await fetch(path, {method, headers: {'content-type': 'application/json'}, ...(payload ? {body: JSON.stringify(payload)} : {})});
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '読み込みに失敗しました。');
       return result;
@@ -61,8 +62,19 @@ const closer = document.getElementById('closer');
         }
       }
       document.getElementById('fields').innerHTML = html;
+      document.getElementById('deleteTask').hidden = !(name === 'Tasks' && Boolean(id));
       editor.showModal();
     }
+    document.getElementById('deleteTask').addEventListener('click', async () => {
+      if (!editing?.item || editing.name !== 'Tasks') return;
+      if (!confirm('「' + editing.item.title + '」を削除します。よろしいですか？')) return;
+      try {
+        data = await call('deleteTask', editing.item.id, JSON.stringify(editing.item));
+        editor.close();
+        error('');
+        render();
+      } catch (err) { error(err.message || err); }
+    });
     document.getElementById('editForm').addEventListener('submit', async e => {
       e.preventDefault();
       const form = e.target, name = editing.name, old = editing.item;
