@@ -17,9 +17,9 @@
 ## Web 画面をローカルで起動
 
 1. `npm install` を実行します。
-2. `.env.example` を `.env` にコピーし、`NIIGO_SPREADSHEET_ID` に対象のスプレッドシート ID を設定します。`npm start` は `.env` を読み込みます。
+2. `.env.example` を `.env` にコピーし、`NIIGO_SPREADSHEET_ID` に対象のスプレッドシート ID を設定します。
 3. Google Sheets API を利用できるサービスアカウントを用意し、そのメールアドレスに対象シートの編集権限を付与します。認証情報の JSON 全体を1行にして、`.env` の `GOOGLE_SERVICE_ACCOUNT_JSON` に設定します。秘密鍵の改行は JSON 内で `\n` のまま保存してください。鍵を Git に追加しないでください。
-4. `npm start` を実行し、`http://127.0.0.1:3000` を開きます。
+4. `npm run dev` を実行し、`http://127.0.0.1:3000` を開きます。`npm start` でも同じように起動できます。
 
 サーバーはローカルホストで待ち受けます。家庭内で Web 画面を共有するための認証と公開方法は、まだ決めていません。公開する際は利用者の認証と Sheets への権限を設定する必要があります。
 
