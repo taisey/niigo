@@ -1,0 +1,253 @@
+openapi: 3.0.3
+info:
+  title: NIIGO Web API
+  version: 1.0.0
+  description: |
+    NIIGO の Web 画面が利用する API。すべての更新は Google Sheets に保存される。
+    更新に成功すると、4種類のデータを含む最新のスナップショットを返す。
+paths:
+  /api/data:
+    get:
+      operationId: getData
+      tags: [Data]
+      summary: タスク、カテゴリ、ラウンド、メンバーを取得する
+      responses:
+        '200': { $ref: '#/components/responses/DataSnapshot' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '502': { $ref: '#/components/responses/SheetsError' }
+  /api/save:
+    post:
+      operationId: saveEntity
+      tags: [Data]
+      summary: タスク、カテゴリ、ラウンド、メンバーを追加または更新する
+      description: |
+        item.id が空または未指定なら追加する。ID があれば、その行を更新する。
+        更新時の expected には、取得した行を JSON.stringify した文字列を指定する。
+        追加時は空文字列を指定する。保存直前の行と一致しない場合は 409 を返す。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - { $ref: '#/components/schemas/SaveTaskRequest' }
+                - { $ref: '#/components/schemas/SaveCategoryRequest' }
+                - { $ref: '#/components/schemas/SaveRoundRequest' }
+                - { $ref: '#/components/schemas/SaveMemberRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/DataSnapshot' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/SheetsError' }
+  /api/rounds/close:
+    post:
+      operationId: closeRound
+      tags: [Rounds]
+      summary: ラウンドを終了し、未完了タスクを移動する
+      description: |
+        対象ラウンドの未完了タスクをすべて destinations に含める。
+        移動先は終了していない別のラウンドの ID、またはラウンドから外す場合は空文字列。
+        expected には、取得したラウンドを JSON.stringify した文字列を指定する。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CloseRoundRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/DataSnapshot' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/SheetsError' }
+  /api/tasks/{taskId}:
+    delete:
+      operationId: deleteTask
+      tags: [Tasks]
+      summary: タスクを削除する
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          description: 削除するタスクの ID。
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeleteTaskRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/DataSnapshot' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/SheetsError' }
+components:
+  schemas:
+    DataSnapshot:
+      type: object
+      required: [Tasks, Categories, Rounds, Members]
+      properties:
+        Tasks:
+          type: array
+          items: { $ref: '#/components/schemas/Task' }
+        Categories:
+          type: array
+          items: { $ref: '#/components/schemas/Category' }
+        Rounds:
+          type: array
+          items: { $ref: '#/components/schemas/Round' }
+        Members:
+          type: array
+          items: { $ref: '#/components/schemas/Member' }
+    Task:
+      type: object
+      required: [id, title, description, due_date, status, assignees, category, round, categoryId, assigneeIds, roundId, categoryIds, assigneesIds, roundIds]
+      properties:
+        id: { type: string, description: タスクの ID。 }
+        title: { type: string, description: タスク名。 }
+        description: { type: string, description: 詳細。 }
+        due_date: { $ref: '#/components/schemas/SheetDate' }
+        status: { type: string, enum: [Todo, In Progress, Done] }
+        assignees: { type: string, description: 担当者名。複数の場合はカンマ区切り。 }
+        category: { type: string, description: カテゴリ名。 }
+        round: { type: string, description: ラウンド名。 }
+        categoryId: { type: string, description: シートの非表示列にあるカテゴリ ID。 }
+        assigneeIds: { type: string, description: シートの非表示列にある担当者 ID の JSON 配列文字列。未設定時は空文字列。 }
+        roundId: { type: string, description: シートの非表示列にあるラウンド ID。 }
+        categoryIds: { $ref: '#/components/schemas/ReferenceIds' }
+        assigneesIds: { $ref: '#/components/schemas/ReferenceIds' }
+        roundIds: { $ref: '#/components/schemas/ReferenceIds' }
+    Category:
+      type: object
+      required: [id, name, description]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+    Round:
+      type: object
+      required: [id, name, description, start_date, end_date, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        start_date: { $ref: '#/components/schemas/SheetDate' }
+        end_date: { $ref: '#/components/schemas/SheetDate' }
+        status: { type: string, enum: [Planned, Active, Closed] }
+    Member:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    SheetDate:
+      type: string
+      description: 未設定時は空文字列。設定する場合は YYYY-MM-DD 形式。
+      pattern: '^$|^\d{4}-\d{2}-\d{2}$'
+    ReferenceIds:
+      type: array
+      description: 紐付け先の ID。カテゴリとラウンドは最大1件、担当者は複数指定できる。
+      items: { type: string }
+    SaveTaskRequest:
+      type: object
+      required: [name, item, expected]
+      properties:
+        name: { type: string, enum: [Tasks] }
+        item: { $ref: '#/components/schemas/TaskInput' }
+        expected: { type: string }
+    SaveCategoryRequest:
+      type: object
+      required: [name, item, expected]
+      properties:
+        name: { type: string, enum: [Categories] }
+        item: { $ref: '#/components/schemas/CategoryInput' }
+        expected: { type: string }
+    SaveRoundRequest:
+      type: object
+      required: [name, item, expected]
+      properties:
+        name: { type: string, enum: [Rounds] }
+        item: { $ref: '#/components/schemas/RoundInput' }
+        expected: { type: string }
+    SaveMemberRequest:
+      type: object
+      required: [name, item, expected]
+      properties:
+        name: { type: string, enum: [Members] }
+        item: { $ref: '#/components/schemas/MemberInput' }
+        expected: { type: string }
+    TaskInput:
+      type: object
+      required: [title, status]
+      properties:
+        id: { type: string, description: 追加時は省略するか空文字列にする。 }
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        due_date: { $ref: '#/components/schemas/SheetDate' }
+        status: { type: string, enum: [Todo, In Progress, Done] }
+        assigneesIds: { $ref: '#/components/schemas/ReferenceIds' }
+        categoryIds: { $ref: '#/components/schemas/ReferenceIds' }
+        roundIds: { $ref: '#/components/schemas/ReferenceIds' }
+    CategoryInput:
+      type: object
+      required: [name]
+      properties:
+        id: { type: string, description: 追加時は省略するか空文字列にする。 }
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+    RoundInput:
+      type: object
+      required: [name, status]
+      description: 終了済みへの変更は /api/rounds/close で行う。
+      properties:
+        id: { type: string, description: 追加時は省略するか空文字列にする。 }
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        start_date: { $ref: '#/components/schemas/SheetDate' }
+        end_date: { $ref: '#/components/schemas/SheetDate' }
+        status: { type: string, enum: [Planned, Active, Closed] }
+    MemberInput:
+      type: object
+      required: [name]
+      properties:
+        id: { type: string, description: 追加時は省略するか空文字列にする。 }
+        name: { type: string, minLength: 1 }
+    CloseRoundRequest:
+      type: object
+      required: [roundId, destinations, expected]
+      properties:
+        roundId: { type: string, minLength: 1 }
+        destinations:
+          type: object
+          description: 未完了タスクの ID をキー、移動先ラウンドの ID または空文字列を値にする。
+          additionalProperties: { type: string }
+        expected: { type: string, description: 取得したラウンドを JSON.stringify した文字列。 }
+    DeleteTaskRequest:
+      type: object
+      required: [expected]
+      properties:
+        expected: { type: string, description: 取得したタスクを JSON.stringify した文字列。 }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+  responses:
+    DataSnapshot:
+      description: 更新後または取得時点の全データ。
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/DataSnapshot' }
+    BadRequest:
+      description: リクエストまたはシートの内容が不正。
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: 対象の行が更新または削除されている。
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    SheetsError:
+      description: Google Sheets との通信に失敗。
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
