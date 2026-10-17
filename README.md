@@ -14,6 +14,8 @@
 
 新しい Space を作る場合は、空のスプレッドシートに `apps-script/` の3ファイルを紐付けた Apps Script プロジェクトとして配置し、同じ初期設定を実行します。`clasp` を使う場合は `.clasp.json.example` を `.clasp.json` にコピーして、紐付けられたプロジェクトの ID を設定します。`clasp push` は `apps-script/` だけを反映します。
 
+サービスアカウントによるデプロイ時更新の要件と検証結果は [Apps Script のデプロイ時更新に関する検証](docs/apps-script-deploy-feasibility.md) にまとめています。この方式はまだ実装していません。
+
 ## Web 画面をローカルで起動
 
 1. `npm install` を実行します。
