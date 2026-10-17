@@ -81,3 +81,18 @@ test('duplicate header stops writes before reaching Sheets', async () => {
   await assert.rejects(new SheetStore(gateway).read(), /Tasks タブのヘッダー「title」が重複/);
   assert.equal(writes, 0);
 });
+
+test('creates a task without a category or round', async () => {
+  const {SheetStore} = await import('../server/store.js');
+  const {rows, gateway} = fixture();
+  const store = new SheetStore(gateway);
+  const data = await store.save('Tasks', {
+    title: '買い物', description: '', due_date: '', status: 'Todo',
+    assigneesIds: [], categoryIds: [], roundIds: []
+  }, '');
+  const task = data.Tasks.find(item => item.title === '買い物');
+  assert.deepEqual(task.categoryIds, []);
+  assert.deepEqual(task.roundIds, []);
+  assert.equal(rows.Tasks[3][7], '');
+  assert.equal(rows.Tasks[3][1], '');
+});

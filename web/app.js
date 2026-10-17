@@ -68,7 +68,7 @@ const closer = document.getElementById('closer');
       const form = e.target, name = editing.name, old = editing.item;
       const item = { id: old?.id || '' };
       for (const field of (name === 'Tasks' ? ['title','description','due_date','status'] : name === 'Rounds' ? ['name','description','start_date','end_date','status'] : name === 'Categories' ? ['name','description'] : ['name'])) item[field] = form.elements[field].value;
-      if (name === 'Tasks') for (const field of ['assigneesIds','categoryIds','roundIds']) item[field] = [...form.elements[field].selectedOptions].map(o => o.value);
+      if (name === 'Tasks') for (const field of ['assigneesIds','categoryIds','roundIds']) item[field] = [...form.elements[field].selectedOptions].map(o => o.value).filter(Boolean);
       try { data = await call('saveEntity', name, item, old ? JSON.stringify(old) : ''); editor.close(); error(''); render(); } catch (err) { error(err.message || err); }
     });
     function openClose(id) {
