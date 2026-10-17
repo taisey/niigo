@@ -1,4 +1,4 @@
-let data = null, view = 'current', editing = null, closing = null;
+let data = null, view = 'dashboard', editing = null, closing = null;
 const editor = document.getElementById('editor');
 const closer = document.getElementById('closer');
     const labels = { Tasks: 'タスク', Categories: 'カテゴリ', Rounds: 'ラウンド', Members: 'メンバー' };
@@ -17,21 +17,29 @@ const closer = document.getElementById('closer');
     function error(message) { document.getElementById('error').innerHTML = message ? '<div class="error">' + esc(message) + '</div>' : ''; }
     async function load() { try { error(''); data = await call('getData'); render(); } catch (e) { error(e.message || e); document.getElementById('main').textContent = ''; } }
     function nav() {
-      const tabs = [['current','今のラウンド'],['backlog','タスク'],['Categories','カテゴリ'],['Rounds','ラウンド'],['Members','メンバー']];
-      document.getElementById('nav').innerHTML = tabs.map(([id, label]) => '<button class="' + (view === id ? 'active' : '') + '" data-view="' + id + '">' + label + '</button>').join('');
+      const tabs = [['dashboard','ダッシュボード'],['tasks','タスク管理']];
+      document.getElementById('nav').innerHTML = tabs.map(([id, label]) => '<button class="' + ((id === 'dashboard' ? view === 'dashboard' : view !== 'dashboard') ? 'active' : '') + '" data-view="' + id + '">' + label + '</button>').join('');
+    }
+    function taskCard(task) {
+      const roundNames = (task.roundIds || []).map(id => data.Rounds.find(round => round.id === id)?.name).filter(Boolean);
+      return '<article role="button" tabindex="0" data-edit="Tasks" data-id="' + esc(task.id) + '"><h3>' + esc(task.title) + '</h3>' + categoryBadges(task) + '<div class="task-details"><span>ステータス: ' + esc(taskStatus[task.status] || task.status) + '</span>' + (roundNames.length ? '<span>ラウンド: ' + esc(roundNames.join('、')) + '</span>' : '') + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>担当者: ' + esc(task.assignees) + '</span>' : '') + '</div>' + (task.description ? '<p>' + esc(task.description) + '</p>' : '') + '</article>';
     }
     function render() {
       nav();
       const main = document.getElementById('main');
-      if (view === 'current' || view === 'backlog') {
+      if (view === 'dashboard') {
         const active = data.Rounds.filter(r => r.status === 'Active');
-        const tasks = view === 'backlog' ? data.Tasks.filter(t => !t.roundIds.length) : data.Tasks.filter(t => active.some(r => t.roundIds.includes(r.id)));
-        const heading = view === 'backlog' ? 'タスク' : active.length ? '今のラウンド: ' + active.map(r => r.name).join('、') : '今のラウンド';
-        main.innerHTML = '<div class="toolbar"><div><h2>' + esc(heading) + '</h2>' + (view === 'current' && !active.length ? '<p class="muted">進行中のラウンドはありません。</p>' : '') + '</div><button class="primary" data-edit="Tasks">タスクを追加</button></div>' +
-          (tasks.length ? '<div class="cards">' + tasks.map(t => '<article role="button" tabindex="0" data-edit="Tasks" data-id="' + esc(t.id) + '"><h3>' + esc(t.title) + '</h3>' + categoryBadges(t) + '<div class="task-details"><span>ステータス: ' + esc(taskStatus[t.status] || t.status) + '</span>' + (t.due_date ? '<span>期限: ' + esc(t.due_date) + '</span>' : '') + (t.assignees ? '<span>担当者: ' + esc(t.assignees) + '</span>' : '') + '</div>' + (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</article>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
+        const tasks = data.Tasks.filter(task => active.some(round => task.roundIds.includes(round.id)));
+        const heading = active.length ? active.map(round => round.name).join('、') : '進行中のラウンドはありません';
+        main.innerHTML = '<div class="toolbar"><div><h2>ダッシュボード</h2><p class="muted">' + esc(heading) + '</p></div><button class="primary" data-view="tasks">タスク管理</button></div>' + (active.length ? '<div class="kanban">' + Object.entries(taskStatus).map(([status, label]) => {
+          const statusTasks = tasks.filter(task => task.status === status);
+          return '<section class="kanban-column"><h3>' + esc(label) + '<span class="count">' + statusTasks.length + '</span></h3><div class="kanban-cards">' + (statusTasks.length ? statusTasks.map(taskCard).join('') : '<div class="empty">タスクはありません。</div>') + '</div></section>';
+        }).join('') + '</div>' : '<div class="empty">ラウンド管理から進行中のラウンドを設定してください。</div>');
+      } else if (view === 'tasks') {
+        main.innerHTML = '<div class="toolbar"><div><h2>タスク管理</h2><p class="muted">タスクを一覧で確認し、カテゴリやラウンド、担当者を設定できます。</p></div><button class="primary" data-edit="Tasks">タスクを追加</button></div><div class="subnav"><button class="active" data-view="tasks">タスク一覧</button><button data-view="Categories">カテゴリ管理</button><button data-view="Rounds">ラウンド管理</button><button data-view="Members">メンバー管理</button></div>' + (data.Tasks.length ? '<div class="task-list">' + data.Tasks.map(task => '<div class="task-row"><div class="task-row-main"><strong>' + esc(task.title) + '</strong>' + categoryBadges(task) + '<div class="task-details"><span>ステータス: ' + esc(taskStatus[task.status] || task.status) + '</span>' + ((task.roundIds || []).length ? '<span>ラウンド: ' + esc(task.roundIds.map(id => data.Rounds.find(round => round.id === id)?.name).filter(Boolean).join('、')) + '</span>' : '<span>ラウンド: 未設定</span>') + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>担当者: ' + esc(task.assignees) + '</span>' : '') + '</div></div><button data-edit="Tasks" data-id="' + esc(task.id) + '">編集・設定</button></div>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
       } else {
         const name = view;
-        main.innerHTML = '<div class="toolbar"><h2>' + labels[name] + '</h2><button class="primary" data-edit="' + name + '">追加</button></div>' +
+        main.innerHTML = '<div class="toolbar"><div><h2>' + labels[name] + '管理</h2></div><button class="primary" data-edit="' + name + '">追加</button></div><div class="subnav"><button data-view="tasks">タスク一覧</button><button class="' + (name === 'Categories' ? 'active' : '') + '" data-view="Categories">カテゴリ管理</button><button class="' + (name === 'Rounds' ? 'active' : '') + '" data-view="Rounds">ラウンド管理</button><button class="' + (name === 'Members' ? 'active' : '') + '" data-view="Members">メンバー管理</button></div>' +
           (data[name].length ? '<div class="panel">' + data[name].map(item => {
             const categoryTasks = name === 'Categories' ? data.Tasks.filter(task => (task.categoryIds || []).includes(item.id)) : [];
             const title = name === 'Categories' ? '<span class="folder-icon" aria-hidden="true">📁</span> ' + esc(item.name) : esc(item.name);
