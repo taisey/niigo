@@ -1,7 +1,10 @@
 import {GoogleAuth} from 'google-auth-library';
 
 export class GoogleSheetsGateway {
-  constructor(spreadsheetId, auth = new GoogleAuth({scopes: ['https://www.googleapis.com/auth/spreadsheets']})) {
+  constructor(spreadsheetId, serviceAccount, auth = new GoogleAuth({
+    credentials: serviceAccount,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets']
+  })) {
     this.spreadsheetId = spreadsheetId;
     this.auth = auth;
   }
