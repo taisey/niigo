@@ -6,7 +6,7 @@
 
 - `web/app.ts` は画面の TypeScript ソースです。シートの列位置やセルのメモを意識せず、Task、Round などのデータとして扱います。
 - `server/` は TypeScript で Web API と Google Sheets の読み書きを実装します。画面から Google の認証情報を扱いません。
-- Web API の I/F は [OpenAPI 定義](server/spec/openapi.yaml)に記載しています。`npm run generate:api` で API クラスを `web/api-generated/` に生成します。`npm run build` は生成後に画面とサーバーを `dist/` へコンパイルします。`npm run dev` と `npm start` は起動前にビルドします。
+- Web API の I/F は [OpenAPI 定義](server/spec/openapi.yaml)に記載しています。`npm run generate:api` で API クラスを `web/api-generated/` に生成します。この生成物は Git 管理せず、`npm run build` で生成してから画面とサーバーを `dist/` へコンパイルします。`npm run dev` と `npm start` は起動前にビルドします。
 - `gas/static/` はシートのメニューと動的ソース呼び出しを担当します。`gas/dynamic/` は Drive から読み込む処理本体です。どちらも Git 管理します。
 - `scripts/` はローカルの `clasp` で固定コードを反映します。`gas/deploy/` は TypeScript で書いたデプロイ処理を使い、サービスアカウントで動的コードを反映します。`gas/.clasp-build/` は `clasp` 用の生成物です。
 
