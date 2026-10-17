@@ -7,13 +7,13 @@
 - `web/` はブラウザで動く JavaScript の画面です。シートの列位置やセルのメモを意識せず、Task、Round などのデータとして扱います。
 - `server/` は Web 画面の API と Google Sheets の読み書きを担当します。画面から Google の認証情報を扱いません。
 - `apps-script/static/` はシートのメニューと動的ソース呼び出しを担当します。`apps-script/dynamic/` は Drive から読み込む処理本体です。どちらも Git 管理します。
-- `scripts/` はローカルの `clasp` で固定コードを反映します。`deploy/` はサービスアカウントで動的コードを反映します。
+- `scripts/` はローカルの `clasp` で固定コードを反映します。`apps-script/deploy/` はサービスアカウントで動的コードを反映します。`apps-script/.clasp-build/` は `clasp` 用の生成物です。
 
 ## Google Sheets と Apps Script の準備
 
 作成済みの シート には、4タブと Apps Script プロジェクトを配置済みです。`npm install` の後、`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` に動的ソースを置く Drive ファイルの ID を設定します。`npm run apps-script:bootstrap` を実行すると、シェルスクリプトがローカルの `clasp push --force` で固定コードを反映します。初回は clasp の Google OAuth が必要です。その後、シートの「GAS → 初期設定」を一度実行して Drive 読み取りと編集トリガーの権限を承認します。初期設定では、既存行の ID 欠損も補完します。
 
-新しい Space を作る場合は、`.clasp.json` の `scriptId` と `parentId` を設定して bootstrap を実行します。固定コードは `apps-script/static/`、動的コードは `apps-script/dynamic/` に置きます。
+新しい Space を作る場合は、`.clasp.json.example` を `.clasp.json` にコピーし、`scriptId` と `parentId` を設定して bootstrap を実行します。既存の `.clasp.json` を使う場合も、`rootDir` を `apps-script/.clasp-build` に設定してください。固定コードは `apps-script/static/`、動的コードは `apps-script/dynamic/` に置きます。
 
 ## Web 画面をローカルで起動
 

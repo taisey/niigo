@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { GoogleAuth } from 'google-auth-library';
-import { GoogleSheetsGateway } from '../server/google-sheets-gateway.js';
-import { ensureReferenceIdColumns, moveTaskIdToHiddenColumn } from '../server/reference-id-migration.js';
+import { GoogleSheetsGateway } from '../../server/google-sheets-gateway.js';
+import { ensureReferenceIdColumns, moveTaskIdToHiddenColumn } from '../../server/reference-id-migration.js';
 
 const sourceFileId = process.env.NIIGO_APPS_SCRIPT_SOURCE_FILE_ID?.trim();
 if (!sourceFileId) throw new Error('NIIGO_APPS_SCRIPT_SOURCE_FILE_ID is required in .env');
@@ -19,7 +19,7 @@ if (!credentials.client_email || !credentials.private_key) {
   throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is missing client_email or private_key');
 }
 
-const code = await readFile(new URL('../apps-script/dynamic/Runtime.js', import.meta.url), 'utf8');
+const code = await readFile(new URL('../dynamic/Runtime.js', import.meta.url), 'utf8');
 
 const requiredHandlers = [
   'setup', 'sheetEdited', 'getData', 'saveEntity',

@@ -7,7 +7,7 @@ if [[ ! "$source_file_id" =~ ^[a-zA-Z0-9_-]+$ ]]; then
   exit 1
 fi
 
-deploy_dir=apps-script/deploy
+deploy_dir=apps-script/.clasp-build
 mkdir -p "$deploy_dir"
 sed "s/__NIIGO_APPS_SCRIPT_SOURCE_FILE_ID__/$source_file_id/g" \
   apps-script/static/Bootstrap.js > "$deploy_dir/Bootstrap.js"
