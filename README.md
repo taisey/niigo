@@ -13,7 +13,7 @@
 
 作成済みの シート には、4タブと Apps Script プロジェクトを配置済みです。`npm install` の後、`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` に動的ソースを置く Drive ファイルの ID を設定し、`npm run gas:bootstrap` を実行します。npm コマンドが `.env` の ID をシェルスクリプトに渡し、ローカルの `clasp push --force` で固定コードを反映します。初回は clasp の Google OAuth が必要です。その後、シートの「GAS → 初期設定」を一度実行して Drive 読み取りと編集トリガーの権限を承認します。初期設定では、既存行の ID 欠損も補完します。
 
-新しい Space を作る場合は、`.clasp.json.example` を `.clasp.json` にコピーし、`scriptId` と `parentId` を設定して bootstrap を実行します。既存の `.clasp.json` を使う場合も、`rootDir` を `gas/.clasp-build` に設定してください。固定コードは `gas/static/`、動的コードは `gas/dynamic/` に置きます。
+新しい Space を作る場合は、スプレッドシートに紐付く Apps Script プロジェクトを作成し、`.clasp.json.example` を `.clasp.json` にコピーして `scriptId` を設定します。既存の `.clasp.json` を使う場合も、`rootDir` を `gas/.clasp-build` に設定してください。固定コードは `gas/static/`、動的コードは `gas/dynamic/` に置きます。
 
 ## Web 画面をローカルで起動
 
