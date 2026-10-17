@@ -46,6 +46,9 @@ function setup() {
         .setDescription('NIIGO ID').setWarningOnly(true);
     }
   }
+  // Repair rows that were added before the installable edit trigger existed.
+  // This also makes setup a safe one-time recovery action for older sheets.
+  ensureIds_(book);
   for (const trigger of ScriptApp.getProjectTriggers()) {
     if (['sheetEdited', 'sheetOpened'].includes(trigger.getHandlerFunction())) ScriptApp.deleteTrigger(trigger);
   }
@@ -94,6 +97,20 @@ function rows_(schema) {
     NIIGO[schema.name].forEach(key => { item[key] = cells[schema.columns[key] - 1] || ''; });
     return item;
   }).filter(item => NIIGO[schema.name].some(key => key !== 'id' && item[key]));
+}
+
+function ensureIds_(book) {
+  for (const name of Object.keys(NIIGO)) {
+    const schema = schema_(book.getSheetByName(name));
+    const last = schema.sheet.getLastRow();
+    if (last < 2) continue;
+    for (let row = 2; row <= last; row++) {
+      const hasData = NIIGO[name].some(field => field !== 'id' &&
+        schema.sheet.getRange(row, schema.columns[field]).getDisplayValue().trim());
+      const idCell = schema.sheet.getRange(row, schema.columns.id);
+      if (hasData && !idCell.getDisplayValue().trim()) idCell.setValue(Utilities.getUuid());
+    }
+  }
 }
 
 function assertIds_(rows, name) {
