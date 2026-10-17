@@ -1,5 +1,6 @@
 export type SheetCell = {
   formattedValue?: string;
+  userEnteredValue?: {stringValue?: string; numberValue?: number; formulaValue?: string};
   note?: string;
 };
 

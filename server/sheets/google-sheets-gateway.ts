@@ -12,7 +12,7 @@ export class GoogleSheetsGateway {
   async read(): Promise<Spreadsheet> {
     const query = new URLSearchParams({
       includeGridData: 'true',
-      fields: 'sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),data(rowData(values(formattedValue,note))))'
+      fields: 'sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)),data(rowData(values(formattedValue,userEnteredValue,note))))'
     });
     for (const name of ['Tasks', 'Categories', 'Rounds', 'Members']) query.append('ranges', `'${name}'`);
     const client = await this.auth.getClient();
