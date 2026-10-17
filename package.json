@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate:api": "openapi --input server/spec/openapi.yaml --output web/api-generated --client fetch --useOptions && node tools/patch-generated-api-imports.mjs",
+    "generate:api": "openapi --input server/spec/openapi.yaml --output web/api-generated --client fetch --useOptions && node server/spec/patch-generated-api-imports.mjs",
     "build": "npm run generate:api && tsc -p tsconfig.json",
     "prestart": "npm run build",
     "predev": "npm run build",
