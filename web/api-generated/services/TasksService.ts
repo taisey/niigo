@@ -25,7 +25,7 @@ export class TasksService {
     }): CancelablePromise<DataSnapshot> {
         return __request(OpenAPI, {
             method: 'DELETE',
-            url: '/api/tasks/{taskId}',
+            url: '/tasks/{taskId}',
             path: {
                 'taskId': taskId,
             },

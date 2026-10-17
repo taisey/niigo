@@ -19,7 +19,7 @@ export class DataService {
     public static getData(): CancelablePromise<DataSnapshot> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/data',
+            url: '/data',
             errors: {
                 400: `リクエストまたはシートの内容が不正。`,
                 502: `Google Sheets との通信に失敗。`,
@@ -42,7 +42,7 @@ export class DataService {
     }): CancelablePromise<DataSnapshot> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/save',
+            url: '/save',
             body: requestBody,
             mediaType: 'application/json',
             errors: {

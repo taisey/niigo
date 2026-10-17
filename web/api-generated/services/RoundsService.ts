@@ -24,7 +24,7 @@ export class RoundsService {
     }): CancelablePromise<DataSnapshot> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/rounds/close',
+            url: '/rounds/close',
             body: requestBody,
             mediaType: 'application/json',
             errors: {

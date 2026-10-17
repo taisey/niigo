@@ -4,7 +4,7 @@
 /* eslint-disable */
 import type { SheetDate } from './SheetDate.js';
 /**
- * 終了済みへの変更は /api/rounds/close で行う。
+ * 終了済みへの変更は /rounds/close で行う。
  */
 export type RoundInput = {
     /**

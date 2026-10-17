@@ -34,16 +34,16 @@ export function createApp(store: SheetStore) {
       } else if (request.method === 'GET' && /^\/api-client\/(?:index|(?:core|models|services)\/[A-Za-z][A-Za-z0-9]*)\.js$/.test(path)) {
         response.writeHead(200, {'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff'});
         response.end(await readFile(new URL(`../web/api-generated/${path.slice('/api-client/'.length)}`, import.meta.url)));
-      } else if (request.method === 'GET' && path === '/api/data') {
+      } else if (request.method === 'GET' && path === '/data') {
         send(response, 200, await store.read());
-      } else if (request.method === 'POST' && path === '/api/save') {
+      } else if (request.method === 'POST' && path === '/save') {
         const {name, item, expected} = await json(request);
         send(response, 200, await store.save(name, item, expected));
-      } else if (request.method === 'POST' && path === '/api/rounds/close') {
+      } else if (request.method === 'POST' && path === '/rounds/close') {
         const {roundId, destinations, expected} = await json(request);
         send(response, 200, await store.close(roundId, destinations, expected));
-      } else if (request.method === 'DELETE' && path.startsWith('/api/tasks/')) {
-        const taskId = decodeURIComponent(path.slice('/api/tasks/'.length));
+      } else if (request.method === 'DELETE' && path.startsWith('/tasks/')) {
+        const taskId = decodeURIComponent(path.slice('/tasks/'.length));
         if (!taskId) throw new Error('削除対象のタスクを指定してください。');
         const {expected} = await json(request);
         send(response, 200, await store.deleteTask(taskId, expected));

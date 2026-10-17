@@ -25,10 +25,11 @@ test('serves the compiled TypeScript UI and routes data requests', async () => {
     const service = await fetch(`${root}/api-client/services/DataService.js`);
     assert.equal(service.status, 200);
     assert.match(await service.text(), /class DataService/);
-    const data = await fetch(`${root}/api/data`);
+    const data = await fetch(`${root}/data`);
     assert.deepEqual(await data.json(), {Tasks: [], Categories: [], Rounds: [], Members: []});
-    const save = await fetch(`${root}/api/save`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({name: 'Tasks', item: {title: '洗濯'}})});
+    const save = await fetch(`${root}/save`, {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({name: 'Tasks', item: {title: '洗濯'}})});
     assert.deepEqual(await save.json(), {name: 'Tasks', item: {title: '洗濯'}});
+    assert.equal((await fetch(`${root}/api/data`)).status, 404);
     const {OpenAPI, DataService, RoundsService, TasksService} = await import('../dist/web/api-generated/index.js');
     OpenAPI.BASE = root;
     assert.deepEqual(await DataService.getData(), {Tasks: [], Categories: [], Rounds: [], Members: []});

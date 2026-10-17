@@ -6,7 +6,7 @@ info:
     NIIGO の Web 画面が利用する API。すべての更新は Google Sheets に保存される。
     更新に成功すると、4種類のデータを含む最新のスナップショットを返す。
 paths:
-  /api/data:
+  /data:
     get:
       operationId: getData
       tags: [Data]
@@ -15,7 +15,7 @@ paths:
         '200': { $ref: '#/components/responses/DataSnapshot' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '502': { $ref: '#/components/responses/SheetsError' }
-  /api/save:
+  /save:
     post:
       operationId: saveEntity
       tags: [Data]
@@ -39,7 +39,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/Conflict' }
         '502': { $ref: '#/components/responses/SheetsError' }
-  /api/rounds/close:
+  /rounds/close:
     post:
       operationId: closeRound
       tags: [Rounds]
@@ -58,7 +58,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/Conflict' }
         '502': { $ref: '#/components/responses/SheetsError' }
-  /api/tasks/{taskId}:
+  /tasks/{taskId}:
     delete:
       operationId: deleteTask
       tags: [Tasks]
@@ -196,7 +196,7 @@ components:
     RoundInput:
       type: object
       required: [name, status]
-      description: 終了済みへの変更は /api/rounds/close で行う。
+      description: 終了済みへの変更は /rounds/close で行う。
       properties:
         id: { type: string, description: 追加時は省略するか空文字列にする。 }
         name: { type: string, minLength: 1 }
