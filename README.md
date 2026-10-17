@@ -25,7 +25,7 @@
 
 ## Apps Script の動的ソースをデプロイ
 
-`npm run apps-script:deploy` は `.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` とサービスアカウント認証情報を使い、`apps-script/dynamic/Code.js` を Drive ファイルへアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run apps-script:bootstrap` を実行します。
+`npm run apps-script:deploy` は `.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` とサービスアカウント認証情報を使い、`apps-script/dynamic/Runtime.js` を Drive ファイルへアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run apps-script:bootstrap` を実行します。
 
 サービスアカウントによるデプロイ時更新の検証経緯は [Apps Script のデプロイ時更新に関する検証](docs/apps-script-deploy-feasibility.md) にまとめています。
 

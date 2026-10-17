@@ -46,7 +46,7 @@ function fixture() {
     console
   };
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync('apps-script/dynamic/Code.js', 'utf8'), context);
+  vm.runInContext(fs.readFileSync('apps-script/dynamic/Runtime.js', 'utf8'), context);
   return {context, sheets};
 }
 

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -8,7 +8,7 @@ if (!/^[a-zA-Z0-9_-]+$/.test(sourceFileId)) {
   throw new Error('NIIGO_APPS_SCRIPT_SOURCE_FILE_ID contains invalid characters');
 }
 
-const staticSource = await readFile(new URL('../apps-script/static/Code.js', import.meta.url), 'utf8');
+const staticSource = await readFile(new URL('../apps-script/static/Bootstrap.js', import.meta.url), 'utf8');
 const generatedCode = staticSource.replaceAll('__NIIGO_APPS_SCRIPT_SOURCE_FILE_ID__', sourceFileId);
 if (generatedCode.includes('__NIIGO_APPS_SCRIPT_SOURCE_FILE_ID__')) {
   throw new Error('Failed to inject NIIGO_APPS_SCRIPT_SOURCE_FILE_ID');
@@ -16,8 +16,9 @@ if (generatedCode.includes('__NIIGO_APPS_SCRIPT_SOURCE_FILE_ID__')) {
 
 const outputDir = new URL('../apps-script/deploy/', import.meta.url);
 await mkdir(outputDir, { recursive: true });
+await rm(new URL('Code.js', outputDir), { force: true });
 await Promise.all([
-  writeFile(new URL('Code.js', outputDir), generatedCode),
+  writeFile(new URL('Bootstrap.js', outputDir), generatedCode),
   writeFile(
     new URL('appsscript.json', outputDir),
     await readFile(new URL('../apps-script/static/appsscript.json', import.meta.url))
