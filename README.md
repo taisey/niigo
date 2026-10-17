@@ -10,7 +10,7 @@
 
 ## Google Sheets と Apps Script の準備
 
-作成済みの シート には、4タブと Apps Script プロジェクトを配置済みです。`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` に動的ソースを置く Drive ファイルの ID を設定し、`npm run apps-script:bootstrap` を一度実行して固定コードを反映します。初回は clasp の Google OAuth が必要です。その後、シートの「GAS → 初期設定」を一度実行して Drive 読み取りと編集トリガーの権限を承認します。初期設定では、既存行の ID 欠損も補完します。
+作成済みの シート には、4タブと Apps Script プロジェクトを配置済みです。`npm install` の後、`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` に動的ソースを置く Drive ファイルの ID を設定します。`npm run apps-script:bootstrap` を実行すると、シェルスクリプトがローカルの `clasp push --force` で固定コードを反映します。初回は clasp の Google OAuth が必要です。その後、シートの「GAS → 初期設定」を一度実行して Drive 読み取りと編集トリガーの権限を承認します。初期設定では、既存行の ID 欠損も補完します。
 
 新しい Space を作る場合は、`.clasp.json` の `scriptId` と `parentId` を設定して bootstrap を実行します。固定コードは `apps-script/static/`、動的コードは `apps-script/dynamic/` に置きます。
 
