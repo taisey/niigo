@@ -2,7 +2,7 @@
 
 2026-10-17 時点の検証結果。対象は既存の NIIGO シートに紐付く Apps Script と、Web サーバーが使うサービスアカウント。
 
-実装では `apps-script/static/` と `apps-script/dynamic/` を分けた。`npm run apps-script:deploy` は動的ソースを Drive ファイルへ更新する。Drive への更新と読み戻し確認は成功した。固定コードの clasp push は試したが、ローカルに clasp の OAuth 認証情報がなく `No credentials found.` で停止したため、対象 Apps Script プロジェクトにはまだ反映していない。
+実装では `apps-script/static/` と `apps-script/dynamic/` を分けた。`npm run apps-script:deploy` は動的ソースを Drive ファイルへ更新する。Drive への更新と読み戻し確認は成功した。固定コードも clasp の OAuth 認証後に `npm run apps-script:bootstrap` で反映し、対象プロジェクトのコードと一致することを確認した。
 
 ## 要件
 
@@ -35,9 +35,10 @@
 
 ## Apps Script 側で残る確認
 
-1. clasp の OAuth 認証後、`npm run apps-script:bootstrap` で固定コードを対象プロジェクトへ反映する。
-2. シートのメニューから `setup()` を一度実行し、Drive 読み取り権限を承認して編集トリガーを作る。
-3. `onOpen` のメニュー表示とインストール型 `sheetEdited` の処理を確認する。
-4. `npm run apps-script:deploy` 後、次の関数呼び出しから更新後のコードが動くことを確認する。
+固定コードは clasp で対象プロジェクトへ反映済み。シート上では次を確認する。
 
-固定コードの初回配置後、デプロイ時の動的ソース更新はサービスアカウントで実行できる。Apps Script 実機での委譲処理は未確認。また、実行時に Drive の取得が失敗するとシート上の処理も失敗する。ソースを動的に実行するため、Drive ファイルの編集権限はデプロイ用アカウントと管理者に限定する。
+1. メニューから `setup()` を一度実行し、Drive 読み取り権限を承認して編集トリガーを作る。
+2. `onOpen` のメニュー表示とインストール型 `sheetEdited` の処理を確認する。
+3. `npm run apps-script:deploy` 後、次の関数呼び出しから更新後のコードが動くことを確認する。
+
+デプロイ時の動的ソース更新はサービスアカウントで実行できる。Apps Script 実機での委譲処理は未確認。また、実行時に Drive の取得が失敗するとシート上の処理も失敗する。ソースを動的に実行するため、Drive ファイルの編集権限はデプロイ用アカウントと管理者に限定する。
