@@ -220,6 +220,32 @@ export class SheetStore {
       return this.read();
     });
   }
+  async reorderTask(taskId: string, beforeTaskId: string, group: string, groupId: string, expectedOrder: string[]): Promise<DataSnapshot> {
+    return this.#exclusive(async () => {
+      if (group !== 'Categories' && group !== 'Rounds') throw new Error('並べ替え対象が不正です。');
+      if (typeof taskId !== 'string' || !taskId || typeof beforeTaskId !== 'string' ||
+          typeof groupId !== 'string' || !groupId || !Array.isArray(expectedOrder) ||
+          expectedOrder.some(id => typeof id !== 'string')) throw new Error('並べ替えの指定が不正です。');
+      const {sheets, data} = parseSnapshot(await this.gateway.read());
+      if (!data[group].some(item => item.id === groupId)) throw new Error('カテゴリまたはラウンドが見つかりません。再読み込みしてください。');
+      const field = group === 'Categories' ? 'categoryIds' : 'roundIds';
+      const tasks = sheets.Tasks.rows.filter(task => task[field].includes(groupId));
+      const order = tasks.map(task => task.id);
+      if (JSON.stringify(order) !== JSON.stringify(expectedOrder)) throw new Error('タスクの順番が変更されました。再読み込みしてください。');
+      const source = tasks.find(task => task.id === taskId);
+      const target = beforeTaskId ? tasks.find(task => task.id === beforeTaskId) : null;
+      if (!source || (beforeTaskId && !target)) throw new Error('並べ替えるタスクが見つかりません。再読み込みしてください。');
+      if (source.id === target?.id) return data as unknown as DataSnapshot;
+      const destinationIndex = target ? target._row : tasks[tasks.length - 1]._row + 1;
+      if (destinationIndex !== source._row && destinationIndex !== source._row + 1) {
+        await this.gateway.write([{moveDimension: {
+          source: {sheetId: sheets.Tasks.sheetId, dimension: 'ROWS', startIndex: source._row, endIndex: source._row + 1},
+          destinationIndex
+        }}]);
+      }
+      return this.read();
+    });
+  }
   async close(roundId: string, destinations: Record<string, string>, expected: string): Promise<DataSnapshot> {
     return this.#exclusive(async () => {
       const {sheets, data} = parseSnapshot(await this.gateway.read());

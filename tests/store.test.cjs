@@ -26,6 +26,13 @@ function fixture() {
       writes.push(...requests);
       for (const request of requests) {
         if (request.appendDimension) continue;
+        if (request.moveDimension) {
+          const {startIndex} = request.moveDimension.source;
+          const [item] = rows.Tasks.splice(startIndex, 1);
+          const destination = request.moveDimension.destinationIndex;
+          rows.Tasks.splice(destination > startIndex ? destination - 1 : destination, 0, item);
+          continue;
+        }
         const {range, rows: changes, fields} = request.updateCells;
         const name = names[range.sheetId];
         const row = range.startRowIndex, column = range.startColumnIndex;
@@ -40,6 +47,37 @@ function fixture() {
   };
   return {rows, notes, writes, gateway};
 }
+
+test('reorders tasks within a round by moving complete sheet rows', async () => {
+  const {SheetStore} = await import('../dist/server/sheets/store.js');
+  const {rows, writes, gateway} = fixture();
+  const store = new SheetStore(gateway);
+  await store.reorderTask('t2', 't1', 'Rounds', 'r1', ['t1', 't2']);
+  assert.deepEqual(rows.Tasks.slice(1).map(row => row[2]), ['t2', 't1']);
+  assert.equal(rows.Tasks[2][0], 'keep');
+  assert.equal(writes[0].moveDimension.destinationIndex, 1);
+  await store.reorderTask('t2', '', 'Rounds', 'r1', ['t2', 't1']);
+  assert.deepEqual(rows.Tasks.slice(1).map(row => row[2]), ['t1', 't2']);
+  assert.equal(writes[1].moveDimension.destinationIndex, 3);
+});
+
+test('rejects stale order and tasks outside the selected group', async () => {
+  const {SheetStore} = await import('../dist/server/sheets/store.js');
+  const {writes, gateway} = fixture();
+  const store = new SheetStore(gateway);
+  await assert.rejects(store.reorderTask('t2', 't1', 'Rounds', 'r1', ['t2', 't1']), /順番が変更されました/);
+  await assert.rejects(store.reorderTask('t2', 't1', 'Categories', 'c1', ['t1']), /タスクが見つかりません/);
+  assert.equal(writes.length, 0);
+});
+
+test('reorders tasks in a category using the same sheet order', async () => {
+  const {SheetStore} = await import('../dist/server/sheets/store.js');
+  const {rows, gateway} = fixture();
+  rows.Tasks[2][7] = '家事';
+  rows.Tasks[2][9] = 'c1';
+  await new SheetStore(gateway).reorderTask('t2', 't1', 'Categories', 'c1', ['t1', 't2']);
+  assert.deepEqual(rows.Tasks.slice(1).map(row => row[2]), ['t2', 't1']);
+});
 
 test('writes task and round dates as Sheets date cells', async () => {
   const {SheetStore} = await import('../dist/server/sheets/store.js');

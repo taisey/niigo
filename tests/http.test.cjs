@@ -8,7 +8,8 @@ test('serves the compiled TypeScript UI and routes data requests', async () => {
     read: async () => ({Tasks: [], Categories: [], Rounds: [], Members: []}),
     save: async (name, item) => ({name, item}),
     close: async (roundId, destinations) => ({roundId, destinations}),
-    deleteTask: async taskId => ({taskId})
+    deleteTask: async taskId => ({taskId}),
+    reorderTask: async (taskId, beforeTaskId, group, groupId, expectedOrder) => ({taskId, beforeTaskId, group, groupId, expectedOrder})
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -38,6 +39,8 @@ test('serves the compiled TypeScript UI and routes data requests', async () => {
     assert.deepEqual(await DataService.saveEntity({requestBody: {name: 'Tasks', item: {title: '掃除', status: 'Todo'}, expected: ''}}), {name: 'Tasks', item: {title: '掃除', status: 'Todo'}});
     assert.deepEqual(await RoundsService.closeRound({requestBody: {roundId: 'round-1', destinations: {}, expected: ''}}), {roundId: 'round-1', destinations: {}});
     assert.deepEqual(await TasksService.deleteTask({taskId: 'task-1', requestBody: {expected: ''}}), {taskId: 'task-1'});
+    const order = {taskId: 'task-2', beforeTaskId: 'task-1', group: 'Rounds', groupId: 'round-1', expectedOrder: ['task-1', 'task-2']};
+    assert.deepEqual(await TasksService.reorderTask({requestBody: order}), order);
     OpenAPI.BASE = '';
   } finally {
     await new Promise(resolve => server.close(resolve));

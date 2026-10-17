@@ -30,6 +30,10 @@ export function handlers(store: SheetStore): Record<OperationId, Handler> {
       if (!taskId) throw new Error('削除対象のタスクを指定してください。');
       const {expected} = await json(request);
       return store.deleteTask(taskId, expected);
+    },
+    reorderTask: async request => {
+      const {taskId, beforeTaskId, group, groupId, expectedOrder} = await json(request);
+      return store.reorderTask(taskId, beforeTaskId, group, groupId, expectedOrder);
     }
   };
 }
