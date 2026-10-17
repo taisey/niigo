@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #263238; background: #f7f8f6; }
+    body { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    header, nav, .toolbar, .row { display: flex; align-items: center; gap: 12px; }
+    header { justify-content: space-between; }
+    h1 { font-size: 1.7rem; margin: 0 0 8px; }
+    h2 { font-size: 1.25rem; }
+    nav { margin: 24px 0; flex-wrap: wrap; }
+    button { border: 1px solid #bccbc4; background: white; color: #244337; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+    button.primary, button.active { background: #236b4b; color: white; border-color: #236b4b; }
+    button:disabled { opacity: .5; cursor: default; }
+    .toolbar { justify-content: space-between; flex-wrap: wrap; }
+    .cards { display: grid; gap: 12px; margin-top: 16px; }
+    article, .panel { background: white; border: 1px solid #dce4dd; border-radius: 12px; padding: 16px; }
+    article { cursor: pointer; }
+    article h3 { margin: 0 0 6px; }
+    .muted { color: #60736b; font-size: .9rem; }
+    .error { color: #a02525; background: #fff0ee; padding: 12px; border-radius: 8px; margin: 12px 0; }
+    .empty { color: #60736b; padding: 28px; text-align: center; }
+    dialog { border: 1px solid #dce4dd; border-radius: 12px; padding: 24px; width: min(560px, calc(100vw - 48px)); max-height: 85vh; overflow: auto; }
+    dialog::backdrop { background: #17261db8; }
+    label { display: grid; gap: 4px; margin: 10px 0; font-size: .9rem; }
+    input, textarea, select { width: 100%; box-sizing: border-box; padding: 9px; border: 1px solid #aabbb0; border-radius: 7px; font: inherit; }
+    select[multiple] { min-height: 110px; }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    .row { justify-content: space-between; border-bottom: 1px solid #edf0ed; padding: 10px 0; }
+    @media (max-width: 600px) { body { padding: 14px; } .row { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header><div><h1>NIIGO</h1><div class="muted">家庭のタスクを整理</div></div><button onclick="load()">更新</button></header>
+  <div id="error" role="alert"></div>
+  <nav id="nav"></nav>
+  <main id="main" aria-live="polite">読み込み中…</main>
+  <dialog id="editor"><form id="editForm"><h2 id="editorTitle"></h2><div id="fields"></div><div class="actions"><button type="button" onclick="editor.close()">キャンセル</button><button class="primary">保存</button></div></form></dialog>
+  <dialog id="closer"><form id="closeForm"><h2>ラウンドを終了</h2><p>未完了のタスクごとに移動先を選んでください。完了したタスクはこのラウンドに残ります。</p><div id="closeFields"></div><div class="actions"><button type="button" onclick="closer.close()">キャンセル</button><button class="primary">終了する</button></div></form></dialog>
+  <script>
+    let data = null, view = 'current', editing = null, closing = null;
+    const labels = { Tasks: 'タスク', Categories: 'カテゴリ', Rounds: 'ラウンド', Members: 'メンバー' };
+    const taskStatus = {Todo: '未着手', 'In Progress': '進行中', Done: '完了'};
+    const roundStatus = {Planned: '計画中', Active: '進行中', Closed: '終了'};
+    const call = (name, ...args) => new Promise((resolve, reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args));
+    const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function error(message) { document.getElementById('error').innerHTML = message ? '<div class="error">' + esc(message) + '</div>' : ''; }
+    async function load() { try { error(''); data = await call('getData'); render(); } catch (e) { error(e.message || e); document.getElementById('main').textContent = ''; } }
+    function nav() {
+      const tabs = [['current','今のラウンド'],['backlog','Backlog'],['Categories','カテゴリ'],['Rounds','ラウンド'],['Members','メンバー']];
+      document.getElementById('nav').innerHTML = tabs.map(([id, label]) => '<button class="' + (view === id ? 'active' : '') + '" onclick="view=\'' + id + '\';render()">' + label + '</button>').join('');
+    }
+    function render() {
+      nav();
+      const main = document.getElementById('main');
+      if (view === 'current' || view === 'backlog') {
+        const active = data.Rounds.filter(r => r.status === 'Active');
+        const tasks = view === 'backlog' ? data.Tasks.filter(t => !t.roundIds.length) : data.Tasks.filter(t => active.some(r => t.roundIds.includes(r.id)));
+        const heading = view === 'backlog' ? 'Backlog' : active.length ? '今のラウンド: ' + active.map(r => r.name).join('、') : '今のラウンド';
+        main.innerHTML = '<div class="toolbar"><div><h2>' + esc(heading) + '</h2>' + (view === 'current' && !active.length ? '<p class="muted">進行中のラウンドはありません。</p>' : '') + '</div><button class="primary" onclick="openEditor(\'Tasks\')">タスクを追加</button></div>' +
+          (tasks.length ? '<div class="cards">' + tasks.map(t => '<article onclick="openEditor(\'Tasks\',\'' + esc(t.id) + '\')"><h3>' + esc(t.title) + '</h3><div class="muted">' + esc(taskStatus[t.status] || t.status) + (t.due_date ? ' · 期限 ' + esc(t.due_date) : '') + (t.assignees ? ' · ' + esc(t.assignees) : '') + '</div>' + (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</article>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
+      } else {
+        const name = view;
+        main.innerHTML = '<div class="toolbar"><h2>' + labels[name] + '</h2><button class="primary" onclick="openEditor(\'' + name + '\')">追加</button></div>' +
+          (data[name].length ? '<div class="panel">' + data[name].map(item => '<div class="row"><div><strong>' + esc(item.name) + '</strong>' + (name === 'Rounds' ? ' <span class="muted">' + esc(roundStatus[item.status] || item.status) + '</span>' : '') + (item.description ? '<div class="muted">' + esc(item.description) + '</div>' : '') + '</div><div><button onclick="openEditor(\'' + name + '\',\'' + esc(item.id) + '\')">編集</button> ' + (name === 'Rounds' && item.status !== 'Closed' ? '<button onclick="openClose(\'' + esc(item.id) + '\')">終了</button>' : '') + '</div></div>').join('') + '</div>' : '<div class="empty">まだありません。</div>');
+      }
+    }
+    function select(name, choices, chosen, multiple) {
+      const selected = new Set(chosen || []);
+      return '<label>' + name + '<select name="' + name + '" ' + (multiple ? 'multiple' : '') + '>' + (multiple ? '' : '<option value="">なし</option>') + choices.map(c => '<option value="' + esc(c.id) + '" ' + (selected.has(c.id) ? 'selected' : '') + '>' + esc(c.name) + '</option>').join('') + '</select></label>';
+    }
+    function field(label, name, value, type = 'text') { return '<label>' + label + (type === 'textarea' ? '<textarea name="' + name + '">' + esc(value) + '</textarea>' : '<input name="' + name + '" type="' + type + '" value="' + esc(value) + '">') + '</label>'; }
+    function openEditor(name, id) {
+      editing = { name, item: id ? data[name].find(x => x.id === id) : null };
+      const item = editing.item || {};
+      document.getElementById('editorTitle').textContent = (id ? '編集: ' : '追加: ') + labels[name];
+      let html = '';
+      if (name === 'Tasks') {
+        html += field('タスク名', 'title', item.title || '');
+        html += field('詳細', 'description', item.description || '', 'textarea');
+        html += field('期限', 'due_date', item.due_date || '', 'date');
+        html += '<label>ステータス<select name="status">' + Object.entries(taskStatus).map(([key, label]) => '<option value="' + key + '" ' + ((item.status || 'Todo') === key ? 'selected' : '') + '>' + label + '</option>').join('') + '</select></label>';
+        html += select('担当者', data.Members, item.assigneesIds, true).replace('name="担当者"', 'name="assigneesIds"');
+        html += select('カテゴリ', data.Categories, item.categoryIds).replace('name="カテゴリ"', 'name="categoryIds"');
+        html += select('ラウンド', data.Rounds.filter(r => r.status !== 'Closed' || item.roundIds?.includes(r.id)), item.roundIds).replace('name="ラウンド"', 'name="roundIds"');
+      } else {
+        html += field('名前', 'name', item.name || '');
+        if (name !== 'Members') html += field('説明', 'description', item.description || '', 'textarea');
+        if (name === 'Rounds') {
+          html += field('開始日', 'start_date', item.start_date || '', 'date') + field('終了日', 'end_date', item.end_date || '', 'date');
+          html += '<label>ステータス<select name="status">' + Object.entries(roundStatus).filter(([key]) => key !== 'Closed' || item.status === 'Closed').map(([key,label]) => '<option value="' + key + '" ' + ((item.status || 'Planned') === key ? 'selected' : '') + '>' + label + '</option>').join('') + '</select></label>';
+        }
+      }
+      document.getElementById('fields').innerHTML = html;
+      editor.showModal();
+    }
+    document.getElementById('editForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const form = e.target, name = editing.name, old = editing.item;
+      const item = { id: old?.id || '' };
+      for (const field of (name === 'Tasks' ? ['title','description','due_date','status'] : name === 'Rounds' ? ['name','description','start_date','end_date','status'] : name === 'Categories' ? ['name','description'] : ['name'])) item[field] = form.elements[field].value;
+      if (name === 'Tasks') for (const field of ['assigneesIds','categoryIds','roundIds']) item[field] = [...form.elements[field].selectedOptions].map(o => o.value);
+      try { data = await call('saveEntity', name, item, old ? JSON.stringify(old) : ''); editor.close(); error(''); render(); } catch (err) { error(err.message || err); }
+    });
+    function openClose(id) {
+      closing = data.Rounds.find(r => r.id === id);
+      const tasks = data.Tasks.filter(t => t.roundIds.includes(id) && t.status !== 'Done');
+      const choices = data.Rounds.filter(r => r.id !== id && r.status !== 'Closed');
+      document.getElementById('closeFields').innerHTML = tasks.length ? tasks.map(t => '<label>' + esc(t.title) + '<select data-task="' + esc(t.id) + '"><option value="">Backlog</option>' + choices.map(r => '<option value="' + esc(r.id) + '">' + esc(r.name) + '</option>').join('') + '</select></label>').join('') : '<p>移動するタスクはありません。</p>';
+      closer.showModal();
+    }
+    document.getElementById('closeForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const destinations = {};
+      document.querySelectorAll('#closeFields select').forEach(select => { destinations[select.dataset.task] = select.value; });
+      try { data = await call('closeRound', closing.id, destinations, JSON.stringify(closing)); closer.close(); error(''); render(); } catch (err) { error(err.message || err); }
+    });
+    load();
+  </script>
+</body>
+</html>

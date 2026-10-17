@@ -1,0 +1,24 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><style>
+body{font:14px system-ui,sans-serif;padding:12px;color:#263238}label{display:block;margin:10px 0}select{width:100%;padding:6px}button{padding:8px 12px;border:0;border-radius:6px;background:#236b4b;color:white;cursor:pointer}.error{color:#a02525}
+</style></head><body><div id="content">読み込み中…</div><p id="message"></p><script>
+const mode = '<?= mode ?>';
+let selectedTask, data, round;
+const call=(name,...args)=>new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args));
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const message=s=>{document.getElementById('message').textContent=s;};
+async function init(){try{
+ if(mode==='assignees'){
+  const result=await call('getSelectedTask');selectedTask=result.task;
+  if(!selectedTask)throw Error('タスク行を選択してください。');
+  document.getElementById('content').innerHTML='<h3>'+esc(selectedTask.title)+'</h3>'+result.members.map(m=>'<label><input type="checkbox" value="'+esc(m.id)+'" '+(selectedTask.assigneesIds.includes(m.id)?'checked':'')+'> '+esc(m.name)+'</label>').join('')+'<button onclick="saveAssignees()">保存</button>';
+ }else{
+  data=await call('getData');
+  document.getElementById('content').innerHTML='<label>終了するラウンド<select id="round" onchange="showTasks()">'+data.Rounds.filter(r=>r.status!=='Closed').map(r=>'<option value="'+esc(r.id)+'">'+esc(r.name)+'</option>').join('')+'</select></label><div id="tasks"></div><button onclick="saveClose()">終了する</button>';
+  showTasks();
+ }
+}catch(e){message(e.message||e);}}
+function showTasks(){const id=document.getElementById('round').value;round=data.Rounds.find(r=>r.id===id);const tasks=data.Tasks.filter(t=>t.roundIds.includes(id)&&t.status!=='Done');document.getElementById('tasks').innerHTML=tasks.map(t=>'<label>'+esc(t.title)+'<select data-task="'+esc(t.id)+'"><option value="">Backlog</option>'+data.Rounds.filter(r=>r.id!==id&&r.status!=='Closed').map(r=>'<option value="'+esc(r.id)+'">'+esc(r.name)+'</option>').join('')+'</select></label>').join('')||'<p>移動するタスクはありません。</p>';}
+async function saveAssignees(){try{const ids=[...document.querySelectorAll('input:checked')].map(x=>x.value);message(await call('setSelectedAssignees',selectedTask.id,ids));}catch(e){message(e.message||e);}}
+async function saveClose(){try{const destinations={};document.querySelectorAll('#tasks select').forEach(x=>destinations[x.dataset.task]=x.value);await call('closeRound',round.id,destinations,JSON.stringify(round));message('ラウンドを終了しました。');data=await call('getData');init();}catch(e){message(e.message||e);}}
+init();
+</script></body></html>
