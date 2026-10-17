@@ -31,7 +31,7 @@ const closer = document.getElementById('closer');
         const active = data.Rounds.filter(r => r.status === 'Active');
         const tasks = data.Tasks.filter(task => active.some(round => task.roundIds.includes(round.id)));
         const heading = active.length ? active.map(round => round.name).join('、') : '進行中のラウンドはありません';
-        main.innerHTML = '<div class="toolbar"><div><h2>ダッシュボード</h2><p class="muted">' + esc(heading) + '</p></div><button class="primary" data-view="tasks">タスク管理</button></div>' + (active.length ? '<div class="kanban">' + Object.entries(taskStatus).map(([status, label]) => {
+        main.innerHTML = '<div class="toolbar"><div><h2>ダッシュボード</h2><p class="muted">' + esc(heading) + '</p></div></div>' + (active.length ? '<div class="kanban">' + Object.entries(taskStatus).map(([status, label]) => {
           const statusTasks = tasks.filter(task => task.status === status);
           return '<section class="kanban-column"><h3>' + esc(label) + '<span class="count">' + statusTasks.length + '</span></h3><div class="kanban-cards">' + (statusTasks.length ? statusTasks.map(taskCard).join('') : '<div class="empty">タスクはありません。</div>') + '</div></section>';
         }).join('') + '</div>' : '<div class="empty">ラウンド管理から進行中のラウンドを設定してください。</div>');
