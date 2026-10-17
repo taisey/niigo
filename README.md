@@ -27,8 +27,6 @@
 
 `npm run apps-script:deploy` はサービスアカウントを使い、既存シートの `Tasks` に参照先 ID の列を追加し、既存タスクの値を補完します。H 列の `id` は AA 列へ移し、旧形式の ID メモも削除します。その後、`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` が示す Drive ファイルへ `apps-script/dynamic/Runtime.js` をアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run apps-script:bootstrap` を実行します。
 
-サービスアカウントによるデプロイ時更新の検証経緯は [Apps Script のデプロイ時更新に関する検証](docs/apps-script-deploy-feasibility.md) にまとめています。
-
 ## シートでの操作
 
 `Tasks` の担当者には、メンバー名をカンマで区切って直接入力できます。Web 画面ではタスクの編集画面から担当者を選択できます。
