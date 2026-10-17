@@ -36,7 +36,7 @@ const closer = document.getElementById('closer');
           return '<section class="kanban-column"><h3>' + esc(label) + '<span class="count">' + statusTasks.length + '</span></h3><div class="kanban-cards">' + (statusTasks.length ? statusTasks.map(taskCard).join('') : '<div class="empty">タスクはありません。</div>') + '</div></section>';
         }).join('') + '</div>' : '<div class="empty">ラウンド管理から進行中のラウンドを設定してください。</div>');
       } else if (view === 'tasks') {
-        main.innerHTML = '<div class="toolbar"><div><h2>タスク管理</h2><p class="muted">タスクを一覧で確認し、カテゴリやラウンド、担当者を設定できます。</p></div><button class="primary" data-edit="Tasks">タスクを追加</button></div><div class="subnav"><button class="active" data-view="tasks">タスク一覧</button><button data-view="Categories">カテゴリ管理</button><button data-view="Rounds">ラウンド管理</button><button data-view="Members">メンバー管理</button></div>' + (data.Tasks.length ? '<div class="task-list">' + data.Tasks.map(task => '<div class="task-row"><div class="task-row-main"><strong>' + esc(task.title) + '</strong>' + categoryBadges(task) + '<div class="task-details"><span>ステータス: ' + esc(taskStatus[task.status] || task.status) + '</span>' + ((task.roundIds || []).length ? '<span>ラウンド: ' + esc(task.roundIds.map(id => data.Rounds.find(round => round.id === id)?.name).filter(Boolean).join('、')) + '</span>' : '<span>ラウンド: 未設定</span>') + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>担当者: ' + esc(task.assignees) + '</span>' : '') + '</div></div><button data-edit="Tasks" data-id="' + esc(task.id) + '">編集・設定</button></div>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
+        main.innerHTML = '<div class="toolbar"><div><h2>タスク管理</h2><p class="muted">タスクを一覧で確認し、カテゴリやラウンド、担当者を設定できます。</p></div><button class="primary" data-edit="Tasks">タスクを追加</button></div><div class="subnav"><button class="active" data-view="tasks">タスク一覧</button><button data-view="Categories">カテゴリ管理</button><button data-view="Rounds">ラウンド管理</button><button data-view="Members">メンバー管理</button></div>' + (data.Tasks.length ? '<div class="task-list">' + data.Tasks.map(task => '<div class="task-row"><div class="task-row-main"><strong>' + esc(task.title) + '</strong>' + categoryBadges(task) + '<div class="task-details"><span>ステータス: ' + esc(taskStatus[task.status] || task.status) + '</span>' + ((task.roundIds || []).length ? '<span>ラウンド: ' + esc(task.roundIds.map(id => data.Rounds.find(round => round.id === id)?.name).filter(Boolean).join('、')) + '</span>' : '<span>ラウンド: 未設定</span>') + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>担当者: ' + esc(task.assignees) + '</span>' : '') + '</div></div><div class="task-actions"><button data-edit="Tasks" data-id="' + esc(task.id) + '">編集</button><button class="danger" data-delete-task="' + esc(task.id) + '">削除</button></div></div>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
       } else {
         const name = view;
         main.innerHTML = '<div class="toolbar"><div><h2>' + labels[name] + '管理</h2></div><button class="primary" data-edit="' + name + '">追加</button></div><div class="subnav"><button data-view="tasks">タスク一覧</button><button class="' + (name === 'Categories' ? 'active' : '') + '" data-view="Categories">カテゴリ管理</button><button class="' + (name === 'Rounds' ? 'active' : '') + '" data-view="Rounds">ラウンド管理</button><button class="' + (name === 'Members' ? 'active' : '') + '" data-view="Members">メンバー管理</button></div>' +
@@ -92,6 +92,12 @@ const closer = document.getElementById('closer');
         render();
       } catch (err) { error(err.message || err); }
     });
+    async function deleteTaskFromList(id) {
+      const task = data.Tasks.find(item => item.id === id);
+      if (!task || !confirm('「' + task.title + '」を削除します。よろしいですか？')) return;
+      try { data = await call('deleteTask', task.id, JSON.stringify(task)); error(''); render(); }
+      catch (err) { error(err.message || err); }
+    }
     document.getElementById('editForm').addEventListener('submit', async e => {
       e.preventDefault();
       const form = e.target, name = editing.name, old = editing.item;
@@ -115,9 +121,10 @@ const closer = document.getElementById('closer');
     });
     document.getElementById('reload').addEventListener('click', load);
     document.addEventListener('click', event => {
-      const button = event.target.closest('[data-view], [data-edit], [data-close], [data-dismiss], [data-add-task-category]');
+      const button = event.target.closest('[data-view], [data-edit], [data-close], [data-dismiss], [data-add-task-category], [data-delete-task]');
       if (!button) return;
       if (button.dataset.view) { view = button.dataset.view; render(); }
+      else if (button.dataset.deleteTask) deleteTaskFromList(button.dataset.deleteTask);
       else if (button.dataset.addTaskCategory) openEditor('Tasks', null, {categoryIds: [button.dataset.addTaskCategory]});
       else if (button.dataset.edit) openEditor(button.dataset.edit, button.dataset.id);
       else if (button.dataset.close) openClose(button.dataset.close);

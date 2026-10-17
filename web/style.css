@@ -23,6 +23,8 @@
     .task-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #edf0ed; padding: 14px 0; }
     .task-row:last-child { border-bottom: 0; }
     .task-row-main { min-width: 0; }
+    .task-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .task-actions button.danger { margin-right: 0; }
     article, .panel { background: white; border: 1px solid #dce4dd; border-radius: 12px; padding: 16px; }
     article { cursor: pointer; }
     article h3 { margin: 0 0 6px; }
