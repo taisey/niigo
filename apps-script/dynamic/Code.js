@@ -309,8 +309,6 @@ function closeRound(roundId, destinations, expected) {
   });
 }
 
-function rebuildValidations() { return withLock_(() => { rebuildValidations_(book_()); return '入力規則を更新しました。'; }); }
-
 function rebuildValidations_(book) {
   const schemas = allSchemas_(book);
   const task = schemas.Tasks;

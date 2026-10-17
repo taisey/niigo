@@ -18,7 +18,7 @@ function loadNiigoRuntime_() {
   const bundle = loadNiigoBundle_();
   return new Function(
     bundle.code + '\nreturn {' + [
-      'setup', 'sheetEdited', 'rebuildValidations', 'getData', 'saveEntity',
+      'setup', 'sheetEdited', 'getData', 'saveEntity',
       'closeRound'
     ].map(name => name + ': ' + name).join(',') + '};'
   )();
@@ -34,13 +34,11 @@ function callNiigo_(name, args) {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('NIIGO')
     .addItem('初期設定', 'setup')
-    .addItem('入力規則を更新', 'rebuildValidations')
     .addToUi();
 }
 
 function setup() { return callNiigo_('setup', arguments); }
 function sheetEdited(e) { return callNiigo_('sheetEdited', [e]); }
-function rebuildValidations() { return callNiigo_('rebuildValidations', arguments); }
 function getData() { return callNiigo_('getData', arguments); }
 function saveEntity(name, item, expected) { return callNiigo_('saveEntity', arguments); }
 function closeRound(roundId, destinations, expected) {

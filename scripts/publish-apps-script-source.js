@@ -18,7 +18,7 @@ if (!credentials.client_email || !credentials.private_key) {
 const code = await readFile(new URL('../apps-script/dynamic/Code.js', import.meta.url), 'utf8');
 
 const requiredHandlers = [
-  'setup', 'sheetEdited', 'rebuildValidations', 'getData', 'saveEntity',
+  'setup', 'sheetEdited', 'getData', 'saveEntity',
   'closeRound'
 ];
 for (const name of requiredHandlers) {

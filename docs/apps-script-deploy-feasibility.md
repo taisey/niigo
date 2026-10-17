@@ -29,7 +29,7 @@
 
 デプロイでは、Git の `apps-script/dynamic/Code.js` を JSON にまとめ、サービスアカウントで既存の Drive ファイルへ書き込む。アップロード後に読み戻して一致を確認する。
 
-固定コードに残す公開関数は、`setup`、`onOpen`、`sheetEdited`、`rebuildValidations`、`getData`、`saveEntity`、`closeRound`。トリガーは Drive 上の関数名を直接発見できないため、`sheetEdited` などの委譲関数を固定コードに置く。`setup` がトリガーを作り直しても、その委譲関数名を使う。
+固定コードに残す公開関数は、`setup`、`onOpen`、`sheetEdited`、`getData`、`saveEntity`、`closeRound`。トリガーは Drive 上の関数名を直接発見できないため、`sheetEdited` などの委譲関数を固定コードに置く。`setup` がトリガーを作り直しても、その委譲関数名を使う。
 
 初回配置と Drive 読み取り権限の承認には、所有者の OAuth 操作が一度必要。`DriveApp` の読み取りに必要なスコープを `appsscript.json` に追加し、トリガー作成者が再承認する。[スコープ追加後のトリガーは手動で再承認が必要](https://developers.google.com/apps-script/guides/services/authorization)。固定コードやマニフェストを後から変更する場合も、Apps Script プロジェクトの更新経路が別途必要になる。
 
