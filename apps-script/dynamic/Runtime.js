@@ -10,23 +10,23 @@ const REF_COLUMNS = { category: 'Categories', round: 'Rounds', assignees: 'Membe
 
 function setup() {
   const props = PropertiesService.getScriptProperties();
-  const book = SpreadsheetApp.getActiveSpreadsheet();
-  if (!book) throw new Error('対象のスプレッドシートに紐付けた Apps Script で setup() を実行してください。');
-  const id = book.getId();
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (!spreadsheet) throw new Error('対象のスプレッドシートに紐付けた Apps Script で setup() を実行してください。');
+  const id = spreadsheet.getId();
   props.setProperty('SPREADSHEET_ID', id);
   Object.keys(NIIGO).forEach((name, index) => {
-    let sheet = book.getSheetByName(name);
+    let sheet = spreadsheet.getSheetByName(name);
     if (!sheet) {
-      sheet = index === 0 && book.getSheets().length === 1 &&
-        book.getSheets()[0].getLastRow() === 0 ? book.getSheets()[0] : book.insertSheet(name);
+      sheet = index === 0 && spreadsheet.getSheets().length === 1 &&
+        spreadsheet.getSheets()[0].getLastRow() === 0 ? spreadsheet.getSheets()[0] : spreadsheet.insertSheet(name);
       sheet.setName(name);
       sheet.getRange(1, 1, 1, NIIGO[name].length).setValues([NIIGO[name]]);
       sheet.setFrozenRows(1);
       sheet.getRange(1, 1, 1, NIIGO[name].length).setFontWeight('bold');
     }
   });
-  book.setActiveSheet(book.getSheetByName('Tasks'));
-  const task = schema_(book.getSheetByName('Tasks'));
+  spreadsheet.setActiveSheet(spreadsheet.getSheetByName('Tasks'));
+  const task = schema_(spreadsheet.getSheetByName('Tasks'));
   task.sheet.hideColumns(task.columns.id);
   const protections = task.sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
   const idProtection = protections.find(p => p.getDescription() === 'NIIGO ID');
@@ -36,7 +36,7 @@ function setup() {
       .setDescription('NIIGO ID').setWarningOnly(true);
   }
   for (const name of ['Categories', 'Rounds', 'Members']) {
-    const s = schema_(book.getSheetByName(name));
+    const s = schema_(spreadsheet.getSheetByName(name));
     if (!s.sheet.isColumnHiddenByUser(s.columns.id)) s.sheet.hideColumns(s.columns.id);
     const existing = s.sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE)
       .find(p => p.getDescription() === 'NIIGO ID');
@@ -48,16 +48,16 @@ function setup() {
   }
   // Repair rows that were added before the installable edit trigger existed.
   // This also makes setup a safe one-time recovery action for older sheets.
-  ensureIds_(book);
+  ensureIds_(spreadsheet);
   for (const trigger of ScriptApp.getProjectTriggers()) {
     if (['sheetEdited', 'sheetOpened'].includes(trigger.getHandlerFunction())) ScriptApp.deleteTrigger(trigger);
   }
-  ScriptApp.newTrigger('sheetEdited').forSpreadsheet(book).onEdit().create();
-  rebuildValidations_(book);
-  return { spreadsheetUrl: book.getUrl(), spreadsheetId: id };
+  ScriptApp.newTrigger('sheetEdited').forSpreadsheet(spreadsheet).onEdit().create();
+  rebuildValidations_(spreadsheet);
+  return { spreadsheetUrl: spreadsheet.getUrl(), spreadsheetId: id };
 }
 
-function book_() {
+function spreadsheet_() {
   const id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
   if (!id) throw new Error('先に Apps Script の setup() を実行してください。');
   return SpreadsheetApp.openById(id);
@@ -82,9 +82,9 @@ function schema_(sheet) {
   return { sheet, columns, name };
 }
 
-function allSchemas_(book) {
+function allSchemas_(spreadsheet) {
   const result = {};
-  Object.keys(NIIGO).forEach(name => { result[name] = schema_(book.getSheetByName(name)); });
+  Object.keys(NIIGO).forEach(name => { result[name] = schema_(spreadsheet.getSheetByName(name)); });
   return result;
 }
 
@@ -99,9 +99,9 @@ function rows_(schema) {
   }).filter(item => NIIGO[schema.name].some(key => key !== 'id' && item[key]));
 }
 
-function ensureIds_(book) {
+function ensureIds_(spreadsheet) {
   for (const name of Object.keys(NIIGO)) {
-    const schema = schema_(book.getSheetByName(name));
+    const schema = schema_(spreadsheet.getSheetByName(name));
     const last = schema.sheet.getLastRow();
     if (last < 2) continue;
     for (let row = 2; row <= last; row++) {
@@ -153,7 +153,7 @@ function referenceIds_(cell, text, masters, multiple) {
 }
 
 function snapshot_() {
-  const schemas = allSchemas_(book_());
+  const schemas = allSchemas_(spreadsheet_());
   const data = {};
   Object.keys(schemas).forEach(name => {
     data[name] = rows_(schemas[name]);
@@ -241,8 +241,8 @@ function writeRefs_(schema, row, item, data) {
 function saveEntity(name, item, expected) {
   if (!NIIGO[name]) throw new Error('未対応のデータです。');
   return withLock_(() => {
-    const book = book_();
-    const schemas = allSchemas_(book);
+    const spreadsheet = spreadsheet_();
+    const schemas = allSchemas_(spreadsheet);
     const data = snapshot_();
     const id = item.id || Utilities.getUuid();
     const current = item.id ? data[name].find(row => row.id === id) : null;
@@ -264,7 +264,7 @@ function saveEntity(name, item, expected) {
     if (name === 'Tasks') writeRefs_(schema, row, item, data);
     if (!current) writeCell_(schema, row, 'id', id);
     if (name !== 'Tasks' && current && current.name !== item.name) refreshReferences_(schemas, data, name, id, item.name);
-    rebuildValidations_(book);
+    rebuildValidations_(spreadsheet);
     return snapshot_();
   });
 }
@@ -283,8 +283,8 @@ function refreshReferences_(schemas, data, masterName, id, newName) {
 
 function closeRound(roundId, destinations, expected) {
   return withLock_(() => {
-    const book = book_();
-    const schemas = allSchemas_(book);
+    const spreadsheet = spreadsheet_();
+    const schemas = allSchemas_(spreadsheet);
     const data = snapshot_();
     const round = data.Rounds.find(item => item.id === roundId);
     if (!round || round.status === 'Closed') throw new Error('終了できるラウンドがありません。');
@@ -309,8 +309,8 @@ function closeRound(roundId, destinations, expected) {
   });
 }
 
-function rebuildValidations_(book) {
-  const schemas = allSchemas_(book);
+function rebuildValidations_(spreadsheet) {
+  const schemas = allSchemas_(spreadsheet);
   const task = schemas.Tasks;
   const round = schemas.Rounds;
   const rows = task.sheet.getMaxRows() - 1;
@@ -334,8 +334,8 @@ function sheetEdited(e) {
   const sheet = e.range.getSheet();
   if (!NIIGO[sheet.getName()]) return;
   withLock_(() => {
-    const book = book_();
-    const schemas = allSchemas_(book);
+    const spreadsheet = spreadsheet_();
+    const schemas = allSchemas_(spreadsheet);
     const schema = schemas[sheet.getName()];
     const start = Math.max(2, e.range.getRow());
     const end = e.range.getLastRow();
@@ -350,7 +350,7 @@ function sheetEdited(e) {
     const single = e.range.getNumRows() === 1 && e.range.getNumColumns() === 1;
     if (single && schema.name === 'Rounds' && editedCol === schema.columns.status && e.value === 'Closed') {
       sheet.getRange(start, editedCol).setValue(e.oldValue || 'Planned');
-      book.toast('ラウンドを終了するには、Web 画面で未完了タスクの移動先を選んでください。');
+      spreadsheet.toast('ラウンドを終了するには、Web 画面で未完了タスクの移動先を選んでください。');
     }
     if (single && schema.name === 'Tasks') {
       const field = Object.keys(REF_COLUMNS).find(key => schema.columns[key] === editedCol);
@@ -389,6 +389,6 @@ function sheetEdited(e) {
       const data = snapshot_();
       refreshReferences_(schemas, data, schema.name, id, currentName);
     }
-    rebuildValidations_(book);
+    rebuildValidations_(spreadsheet);
   });
 }

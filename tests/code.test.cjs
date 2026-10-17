@@ -34,13 +34,13 @@ function fixture() {
     Rounds: new Sheet('Rounds', [['status','id','name','description','start_date','end_date'],['Active','r1','Sprint 1','','2026-10-01','2026-10-31'],['Planned','r2','Sprint 2','','2026-11-01','2026-11-30']]),
     Members: new Sheet('Members', [['name','id'],['太郎','m1']])
   };
-  const book = {getSheetByName: name => sheets[name]};
+  const spreadsheet = {getSheetByName: name => sheets[name]};
   const context = {
     SpreadsheetApp: {
-      openById: () => book,
+      openById: () => spreadsheet,
       newDataValidation: () => ({requireValueInList() {return this;},requireValueInRange() {return this;},setAllowInvalid() {return this;},build() {return {};}})
     },
-    PropertiesService: {getScriptProperties: () => ({getProperty: () => 'book'})},
+    PropertiesService: {getScriptProperties: () => ({getProperty: () => 'spreadsheet'})},
     LockService: {getScriptLock: () => ({waitLock() {},releaseLock() {}})},
     Utilities: {getUuid: () => 'new-id'},
     console
