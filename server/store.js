@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 export const COLUMNS = Object.freeze({
-  Tasks: ['title', 'description', 'due_date', 'status', 'assignees', 'category', 'round', 'id', 'categoryId'],
+  Tasks: ['title', 'description', 'due_date', 'status', 'assignees', 'category', 'round', 'id', 'categoryId', 'assigneeIds', 'roundId'],
   Categories: ['id', 'name', 'description'],
   Rounds: ['id', 'name', 'description', 'start_date', 'end_date', 'status'],
   Members: ['id', 'name']
@@ -9,6 +9,7 @@ export const COLUMNS = Object.freeze({
 const TASK_STATUSES = ['Todo', 'In Progress', 'Done'];
 const ROUND_STATUSES = ['Planned', 'Active', 'Closed'];
 const REFS = { category: 'Categories', round: 'Rounds', assignees: 'Members' };
+const REF_ID_COLUMNS = { category: 'categoryId', round: 'roundId', assignees: 'assigneeIds' };
 
 function readSheet(name, sheet) {
   if (!sheet) throw new Error(`${name} タブがありません。`);
@@ -25,7 +26,7 @@ function readSheet(name, sheet) {
     for (const field of COLUMNS[name]) row[field] = values?.values?.[columns[field]]?.formattedValue || '';
     row._cells = values?.values || [];
     return row;
-  }).filter(row => COLUMNS[name].some(field => field !== 'id' && field !== 'categoryId' && row[field]));
+  }).filter(row => COLUMNS[name].some(field => field !== 'id' && !Object.values(REF_ID_COLUMNS).includes(field) && row[field]));
   const ids = new Set();
   for (const row of rows) {
     if (!row.id) throw new Error(`${name} タブの ${row._row + 1} 行目に ID がありません。`);
@@ -66,9 +67,13 @@ export function parseSnapshot(raw) {
   for (const task of sheets.Tasks.rows) {
     for (const [field, master] of Object.entries(REFS)) {
       try {
-        if (field === 'category' && task.categoryId) {
-          if (!sheets.Categories.rows.some(category => category.id === task.categoryId)) throw new Error(`カテゴリ ID が見つかりません: ${task.categoryId}`);
-          task.categoryIds = [task.categoryId];
+        const hidden = REF_ID_COLUMNS[field];
+        if (task[hidden]) {
+          const ids = field === 'assignees' ? JSON.parse(task[hidden]) : [task[hidden]];
+          if (!Array.isArray(ids) || ids.some(id => !sheets[master].rows.some(record => record.id === id))) {
+            throw new Error(`${hidden} が不正です。`);
+          }
+          task[`${field}Ids`] = ids;
         } else {
           task[`${field}Ids`] = idsFor(task._cells[sheets.Tasks.columns[field]], task[field], sheets[master].rows, field === 'assignees');
         }
@@ -155,14 +160,14 @@ export class SheetStore {
       const requests = [];
       if (row >= sheet.rowCount) requests.push({appendDimension: {sheetId: sheet.sheetId, dimension: 'ROWS', length: row - sheet.rowCount + 1}});
       for (const field of COLUMNS[name]) {
-        if (field === 'id' || field === 'categoryId' || field in REFS) continue;
+        if (field === 'id' || Object.values(REF_ID_COLUMNS).includes(field) || field in REFS) continue;
         requests.push(writeCell(sheet, row, field, item[field] || ''));
       }
       if (name === 'Tasks') {
         for (const [field, master] of Object.entries(REFS)) {
           const ids = item[`${field}Ids`] || [];
-          requests.push(writeCell(sheet, row, field, ids.map(ref => data[master].find(record => record.id === ref).name).join(', '), field === 'category' ? '' : ids.length ? `NIIGO:${JSON.stringify(ids)}` : ''));
-          if (field === 'category') requests.push(writeCell(sheet, row, 'categoryId', ids[0] || ''));
+          requests.push(writeCell(sheet, row, field, ids.map(ref => data[master].find(record => record.id === ref).name).join(', '), ''));
+          requests.push(writeCell(sheet, row, REF_ID_COLUMNS[field], field === 'assignees' && ids.length ? JSON.stringify(ids) : ids[0] || ''));
         }
       }
       if (!current) requests.push(writeCell(sheet, row, 'id', id));
@@ -171,7 +176,7 @@ export class SheetStore {
         for (const task of sheets.Tasks.rows) {
           if (!task[`${field}Ids`].includes(id)) continue;
           const names = task[`${field}Ids`].map(ref => ref === id ? item.name : data[name].find(record => record.id === ref).name);
-          requests.push(writeCell(sheets.Tasks, task._row, field, names.join(', '), field === 'category' ? '' : `NIIGO:${JSON.stringify(task[`${field}Ids`])}`));
+          requests.push(writeCell(sheets.Tasks, task._row, field, names.join(', '), ''));
         }
       }
       await this.gateway.write(requests);
@@ -206,7 +211,8 @@ export class SheetStore {
         const dest = destinations[task.id];
         if (dest && (!data.Rounds.some(item => item.id === dest && item.status !== 'Closed') || dest === roundId)) throw new Error('移動先のラウンドが不正です。');
         const label = dest ? data.Rounds.find(item => item.id === dest).name : '';
-        requests.push(writeCell(sheets.Tasks, task._row, 'round', label, dest ? `NIIGO:${JSON.stringify([dest])}` : ''));
+        requests.push(writeCell(sheets.Tasks, task._row, 'round', label, ''));
+        requests.push(writeCell(sheets.Tasks, task._row, 'roundId', dest || ''));
       }
       requests.push(writeCell(sheets.Rounds, rowFor(sheets.Rounds, roundId), 'status', 'Closed'));
       await this.gateway.write(requests);

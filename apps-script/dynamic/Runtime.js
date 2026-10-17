@@ -1,5 +1,5 @@
 const NIIGO = Object.freeze({
-  Tasks: ['title', 'description', 'due_date', 'status', 'assignees', 'category', 'round', 'id', 'categoryId'],
+  Tasks: ['title', 'description', 'due_date', 'status', 'assignees', 'category', 'round', 'id', 'categoryId', 'assigneeIds', 'roundId'],
   Categories: ['id', 'name', 'description'],
   Rounds: ['id', 'name', 'description', 'start_date', 'end_date', 'status'],
   Members: ['id', 'name']
@@ -7,6 +7,7 @@ const NIIGO = Object.freeze({
 const TASK_STATUSES = ['Todo', 'In Progress', 'Done'];
 const ROUND_STATUSES = ['Planned', 'Active', 'Closed'];
 const REF_COLUMNS = { category: 'Categories', round: 'Rounds', assignees: 'Members' };
+const REF_ID_COLUMNS = { category: 'categoryId', round: 'roundId', assignees: 'assigneeIds' };
 
 function setup() {
   const props = PropertiesService.getScriptProperties();
@@ -26,28 +27,26 @@ function setup() {
     }
   });
   const taskSheet = spreadsheet.getSheetByName('Tasks');
-  const taskHeaders = taskSheet.getRange(1, 1, 1, taskSheet.getLastColumn()).getDisplayValues()[0];
-  if (!taskHeaders.includes('categoryId')) {
-    const last = taskSheet.getLastColumn();
-    taskSheet.insertColumnAfter(last);
-    taskSheet.getRange(1, last + 1).setValue('categoryId');
+  for (const field of Object.values(REF_ID_COLUMNS)) {
+    const headers = taskSheet.getRange(1, 1, 1, taskSheet.getLastColumn()).getDisplayValues()[0];
+    if (!headers.includes(field)) {
+      const last = taskSheet.getLastColumn();
+      taskSheet.insertColumnAfter(last);
+      taskSheet.getRange(1, last + 1).setValue(field);
+    }
   }
   spreadsheet.setActiveSheet(spreadsheet.getSheetByName('Tasks'));
   const task = schema_(spreadsheet.getSheetByName('Tasks'));
-  task.sheet.hideColumns(task.columns.id);
-  task.sheet.hideColumns(task.columns.categoryId);
   const protections = task.sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-  const idProtection = protections.find(p => p.getDescription() === 'NIIGO ID');
-  if (idProtection) idProtection.setWarningOnly(true);
-  else {
-    task.sheet.getRange(1, task.columns.id, task.sheet.getMaxRows()).protect()
-      .setDescription('NIIGO ID').setWarningOnly(true);
-  }
-  const categoryIdProtection = protections.find(p => p.getDescription() === 'NIIGO categoryId');
-  if (categoryIdProtection) categoryIdProtection.setWarningOnly(true);
-  else {
-    task.sheet.getRange(1, task.columns.categoryId, task.sheet.getMaxRows()).protect()
-      .setDescription('NIIGO categoryId').setWarningOnly(true);
+  for (const field of ['id', ...Object.values(REF_ID_COLUMNS)]) {
+    task.sheet.hideColumns(task.columns[field]);
+    const description = field === 'id' ? 'NIIGO ID' : 'NIIGO ' + field;
+    const protection = protections.find(p => p.getDescription() === description);
+    if (protection) protection.setWarningOnly(true);
+    else {
+      task.sheet.getRange(1, task.columns[field], task.sheet.getMaxRows()).protect()
+        .setDescription(description).setWarningOnly(true);
+    }
   }
   for (const name of ['Categories', 'Rounds', 'Members']) {
     const s = schema_(spreadsheet.getSheetByName(name));
@@ -63,7 +62,7 @@ function setup() {
   // Repair rows that were added before the installable edit trigger existed.
   // This also makes setup a safe one-time recovery action for older sheets.
   ensureIds_(spreadsheet);
-  backfillCategoryIds_(spreadsheet);
+  backfillReferenceIds_(spreadsheet);
   for (const trigger of ScriptApp.getProjectTriggers()) {
     if (['sheetEdited', 'sheetOpened'].includes(trigger.getHandlerFunction())) ScriptApp.deleteTrigger(trigger);
   }
@@ -111,7 +110,7 @@ function rows_(schema) {
     const item = { _row: i + 2 };
     NIIGO[schema.name].forEach(key => { item[key] = cells[schema.columns[key] - 1] || ''; });
     return item;
-  }).filter(item => NIIGO[schema.name].some(key => key !== 'id' && key !== 'categoryId' && item[key]));
+  }).filter(item => NIIGO[schema.name].some(key => key !== 'id' && !Object.values(REF_ID_COLUMNS).includes(key) && item[key]));
 }
 
 function ensureIds_(spreadsheet) {
@@ -120,7 +119,7 @@ function ensureIds_(spreadsheet) {
     const last = schema.sheet.getLastRow();
     if (last < 2) continue;
     for (let row = 2; row <= last; row++) {
-      const hasData = NIIGO[name].some(field => field !== 'id' && field !== 'categoryId' &&
+      const hasData = NIIGO[name].some(field => field !== 'id' && !Object.values(REF_ID_COLUMNS).includes(field) &&
         schema.sheet.getRange(row, schema.columns[field]).getDisplayValue().trim());
       const idCell = schema.sheet.getRange(row, schema.columns.id);
       if (hasData && !idCell.getDisplayValue().trim()) idCell.setValue(Utilities.getUuid());
@@ -128,16 +127,25 @@ function ensureIds_(spreadsheet) {
   }
 }
 
-function backfillCategoryIds_(spreadsheet) {
+function backfillReferenceIds_(spreadsheet) {
   const schemas = allSchemas_(spreadsheet);
-  const categories = rows_(schemas.Categories);
-  assertIds_(categories, 'Categories');
-  uniqueNames_(categories, 'Categories');
+  const masters = {};
+  for (const name of Object.values(REF_COLUMNS)) {
+    masters[name] = rows_(schemas[name]);
+    assertIds_(masters[name], name);
+    uniqueNames_(masters[name], name);
+  }
   for (const task of rows_(schemas.Tasks)) {
-    if (task.categoryId) continue;
-    const cell = schemas.Tasks.sheet.getRange(task._row, schemas.Tasks.columns.category);
-    const ids = referenceIds_(cell, task.category, categories, false);
-    if (ids.length) schemas.Tasks.sheet.getRange(task._row, schemas.Tasks.columns.categoryId).setValue(ids[0]);
+    for (const [field, masterName] of Object.entries(REF_COLUMNS)) {
+      const hidden = REF_ID_COLUMNS[field];
+      const cell = schemas.Tasks.sheet.getRange(task._row, schemas.Tasks.columns[field]);
+      if (!task[hidden]) {
+        const ids = referenceIds_(cell, task[field], masters[masterName], field === 'assignees');
+        if (ids.length) schemas.Tasks.sheet.getRange(task._row, schemas.Tasks.columns[hidden])
+          .setValue(field === 'assignees' ? JSON.stringify(ids) : ids[0]);
+      }
+      if (cell.getNote().startsWith('NIIGO:')) cell.setNote('');
+    }
   }
 }
 
@@ -190,9 +198,13 @@ function snapshot_() {
     for (const [field, masterName] of Object.entries(REF_COLUMNS)) {
       const cell = schemas.Tasks.sheet.getRange(task._row, schemas.Tasks.columns[field]);
       try {
-        if (field === 'category' && task.categoryId) {
-          if (!data.Categories.some(category => category.id === task.categoryId)) throw new Error('カテゴリ ID が見つかりません: ' + task.categoryId);
-          task.categoryIds = [task.categoryId];
+        const hidden = REF_ID_COLUMNS[field];
+        if (task[hidden]) {
+          const ids = field === 'assignees' ? JSON.parse(task[hidden]) : [task[hidden]];
+          if (!Array.isArray(ids) || ids.some(id => !data[masterName].some(master => master.id === id))) {
+            throw new Error(hidden + ' が不正です。');
+          }
+          task[field + 'Ids'] = ids;
         } else {
           task[field + 'Ids'] = referenceIds_(cell, task[field], data[masterName], field === 'assignees');
         }
@@ -267,12 +279,9 @@ function writeRefs_(schema, row, item, data) {
     const ids = item[field + 'Ids'] || [];
     const cell = schema.sheet.getRange(row, schema.columns[field]);
     cell.setValue(ids.map(id => data[masterName].find(master => master.id === id).name).join(', '));
-    if (field === 'category') {
-      schema.sheet.getRange(row, schema.columns.categoryId).setValue(ids[0] || '');
-      cell.setNote('');
-    } else {
-      cell.setNote(ids.length ? 'NIIGO:' + JSON.stringify(ids) : '');
-    }
+    const hidden = REF_ID_COLUMNS[field];
+    schema.sheet.getRange(row, schema.columns[hidden]).setValue(field === 'assignees' && ids.length ? JSON.stringify(ids) : ids[0] || '');
+    cell.setNote('');
   }
 }
 
@@ -297,7 +306,7 @@ function saveEntity(name, item, expected) {
     validatePayload_(name, item, data, id);
     const schema = schemas[name];
     const row = current ? findRow_(schema, id)._row : Math.max(schema.sheet.getLastRow() + 1, 2);
-    NIIGO[name].filter(field => !['id', 'category', 'categoryId', 'round', 'assignees'].includes(field))
+    NIIGO[name].filter(field => !['id', ...Object.keys(REF_COLUMNS), ...Object.values(REF_ID_COLUMNS)].includes(field))
       .forEach(field => writeCell_(schema, row, field, item[field] || ''));
     if (name === 'Tasks') writeRefs_(schema, row, item, data);
     if (!current) writeCell_(schema, row, 'id', id);
@@ -315,8 +324,7 @@ function refreshReferences_(schemas, data, masterName, id, newName) {
     const cell = schemas.Tasks.sheet.getRange(findRow_(schemas.Tasks, task.id)._row, schemas.Tasks.columns[field]);
     const names = ids.map(refId => refId === id ? newName : data[masterName].find(row => row.id === refId).name);
     cell.setValue(names.join(', '));
-    if (field === 'category') cell.setNote('');
-    else cell.setNote('NIIGO:' + JSON.stringify(ids));
+    cell.setNote('');
   });
 }
 
@@ -341,7 +349,8 @@ function closeRound(roundId, destinations, expected) {
       const dest = destinations[task.id];
       const cell = schemas.Tasks.sheet.getRange(row, schemas.Tasks.columns.round);
       cell.setValue(dest ? data.Rounds.find(item => item.id === dest).name : '');
-      cell.setNote(dest ? 'NIIGO:' + JSON.stringify([dest]) : '');
+      cell.setNote('');
+      schemas.Tasks.sheet.getRange(row, schemas.Tasks.columns.roundId).setValue(dest || '');
     });
     writeCell_(schemas.Rounds, findRow_(schemas.Rounds, roundId)._row, 'status', 'Closed');
     return snapshot_();
@@ -379,7 +388,7 @@ function sheetEdited(e) {
     const start = Math.max(2, e.range.getRow());
     const end = e.range.getLastRow();
     for (let row = start; row <= end; row++) {
-      const values = NIIGO[schema.name].filter(field => field !== 'id' && field !== 'categoryId')
+      const values = NIIGO[schema.name].filter(field => field !== 'id' && !Object.values(REF_ID_COLUMNS).includes(field))
         .map(field => sheet.getRange(row, schema.columns[field]).getDisplayValue());
       if (!values.some(Boolean)) continue;
       const idCell = sheet.getRange(row, schema.columns.id);
@@ -394,7 +403,6 @@ function sheetEdited(e) {
     if (schema.name === 'Tasks') {
       for (const field of Object.keys(REF_COLUMNS)) {
         if (schema.columns[field] < editedCol || schema.columns[field] >= editedCol + e.range.getNumColumns()) continue;
-        if (field !== 'category' && !single) continue;
         const master = rows_(schemas[REF_COLUMNS[field]]);
         assertIds_(master, REF_COLUMNS[field]);
         uniqueNames_(master, REF_COLUMNS[field]);
@@ -407,12 +415,10 @@ function sheetEdited(e) {
             if (!found) throw new Error('参照先が見つかりません: ' + name);
             return found.id;
           });
-          if (field === 'category') {
-            sheet.getRange(row, schema.columns.categoryId).setValue(ids[0] || '');
-            cell.setNote('');
-          } else {
-            cell.setNote(ids.length ? 'NIIGO:' + JSON.stringify([...new Set(ids)]) : '');
-          }
+          const hidden = REF_ID_COLUMNS[field];
+          const uniqueIds = [...new Set(ids)];
+          sheet.getRange(row, schema.columns[hidden]).setValue(field === 'assignees' && uniqueIds.length ? JSON.stringify(uniqueIds) : uniqueIds[0] || '');
+          cell.setNote('');
         }
       }
     }
@@ -436,10 +442,10 @@ function sheetEdited(e) {
       const data = snapshot_();
       refreshReferences_(schemas, data, schema.name, id, currentName);
     }
-    if (!single && schema.name === 'Categories' &&
+    if (!single && schema.name !== 'Tasks' &&
         schema.columns.name >= editedCol && schema.columns.name < editedCol + e.range.getNumColumns()) {
       const data = snapshot_();
-      data.Categories.forEach(category => refreshReferences_(schemas, data, 'Categories', category.id, category.name));
+      data[schema.name].forEach(master => refreshReferences_(schemas, data, schema.name, master.id, master.name));
     }
     rebuildValidations_(spreadsheet);
   });

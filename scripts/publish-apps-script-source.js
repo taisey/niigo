@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { GoogleAuth } from 'google-auth-library';
 import { GoogleSheetsGateway } from '../server/google-sheets-gateway.js';
-import { ensureCategoryIdColumn } from '../server/category-id-migration.js';
+import { ensureReferenceIdColumns } from '../server/reference-id-migration.js';
 
 const sourceFileId = process.env.NIIGO_APPS_SCRIPT_SOURCE_FILE_ID?.trim();
 if (!sourceFileId) throw new Error('NIIGO_APPS_SCRIPT_SOURCE_FILE_ID is required in .env');
@@ -34,8 +34,8 @@ new Function(code + `\nreturn {${requiredHandlers.join(',')}};`);
 
 const bundle = JSON.stringify({ format: 1, code });
 const sha256 = createHash('sha256').update(bundle).digest('hex');
-const migration = await ensureCategoryIdColumn(new GoogleSheetsGateway(spreadsheetId, credentials));
-console.log(`Checked Tasks.categoryId (${migration.created ? 'created' : 'existing'}, ${migration.backfilled} rows backfilled)`);
+const migration = await ensureReferenceIdColumns(new GoogleSheetsGateway(spreadsheetId, credentials));
+console.log(`Checked Tasks reference ID columns (${migration.created.join(', ') || 'existing'}, ${migration.backfilled} values backfilled, ${migration.clearedNotes} notes cleared)`);
 const auth = new GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/drive'] });
 const client = await auth.getClient();
 const uploadUrl = `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(sourceFileId)}?uploadType=media`;
