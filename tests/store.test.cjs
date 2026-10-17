@@ -4,16 +4,16 @@ const assert = require('node:assert/strict');
 function fixture() {
   const rows = {
     Tasks: [
-      ['custom', 'round', 'id', 'title', 'due_date', 'assignees', 'status', 'category', 'description'],
-      ['keep', 'Sprint 1', 't1', '洗濯', '2026-10-20', '太郎', 'Todo', '家事', '洗う'],
-      ['also keep', 'Sprint 1', 't2', '掃除', '2026-10-21', '', 'Done', '', '']
+      ['custom', 'round', 'id', 'title', 'due_date', 'assignees', 'status', 'category', 'description', 'categoryId'],
+      ['keep', 'Sprint 1', 't1', '洗濯', '2026-10-20', '太郎', 'Todo', '家事', '洗う', 'c1'],
+      ['also keep', 'Sprint 1', 't2', '掃除', '2026-10-21', '', 'Done', '', '', '']
     ],
     Categories: [['name', 'description', 'id'], ['家事', '', 'c1']],
     Rounds: [['status', 'id', 'name', 'description', 'start_date', 'end_date'], ['Active', 'r1', 'Sprint 1', '', '2026-10-01', '2026-10-31'], ['Planned', 'r2', 'Sprint 2', '', '2026-11-01', '2026-11-30']],
     Members: [['name', 'id'], ['太郎', 'm1']]
   };
   const names = Object.keys(rows);
-  const notes = {Tasks: {'1:1': 'NIIGO:["r1"]', '1:5': 'NIIGO:["m1"]', '1:7': 'NIIGO:["c1"]', '2:1': 'NIIGO:["r1"]'}};
+  const notes = {Tasks: {'1:1': 'NIIGO:["r1"]', '1:5': 'NIIGO:["m1"]', '2:1': 'NIIGO:["r1"]'}};
   const gateway = {
     async read() {
       return {sheets: names.map((name, sheetId) => ({
@@ -52,12 +52,12 @@ test('reads moved columns, writes by ID, and preserves custom cells', async () =
 
 test('renaming a master retains task references', async () => {
   const {SheetStore} = await import('../server/store.js');
-  const {rows, notes, gateway} = fixture();
+  const {rows, gateway} = fixture();
   const store = new SheetStore(gateway);
   const category = (await store.read()).Categories[0];
   await store.save('Categories', {...category, name: '暮らし'}, JSON.stringify(category));
   assert.equal(rows.Tasks[1][7], '暮らし');
-  assert.equal(notes.Tasks['1:7'], 'NIIGO:["c1"]');
+  assert.equal(rows.Tasks[1][9], 'c1');
 });
 
 test('category ID remains linked when its displayed task label is stale', async () => {
@@ -100,6 +100,7 @@ test('creates a task without a category or round', async () => {
   }, '');
   const task = data.Tasks.find(item => item.title === '買い物');
   assert.deepEqual(task.categoryIds, []);
+  assert.equal(rows.Tasks[3][9], '');
   assert.deepEqual(task.roundIds, []);
   assert.equal(rows.Tasks[3][7], '');
   assert.equal(rows.Tasks[3][1], '');

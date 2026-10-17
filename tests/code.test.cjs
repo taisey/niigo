@@ -32,9 +32,9 @@ class Sheet {
 function fixture() {
   const sheets = {
     Tasks: new Sheet('Tasks', [
-      ['custom', 'round', 'id', 'title', 'due_date', 'assignees', 'status', 'category', 'description'],
-      ['keep', 'Sprint 1', 't1', '洗濯', '2026-10-20', '太郎', 'Todo', '家事', '洗う'],
-      ['also keep', 'Sprint 1', 't2', '掃除', '2026-10-21', '', 'Done', '', '']
+      ['custom', 'round', 'id', 'title', 'due_date', 'assignees', 'status', 'category', 'description', 'categoryId'],
+      ['keep', 'Sprint 1', 't1', '洗濯', '2026-10-20', '太郎', 'Todo', '家事', '洗う', 'c1'],
+      ['also keep', 'Sprint 1', 't2', '掃除', '2026-10-21', '', 'Done', '', '', '']
     ]),
     Categories: new Sheet('Categories', [['name','description','id'],['家事','','c1']]),
     Rounds: new Sheet('Rounds', [['status','id','name','description','start_date','end_date'],['Active','r1','Sprint 1','','2026-10-01','2026-10-31'],['Planned','r2','Sprint 2','','2026-11-01','2026-11-30']]),
@@ -89,12 +89,11 @@ test('master rename updates visible references by ID', () => {
   const category = context.getData().Categories[0];
   context.saveEntity('Categories', {...category, name: '暮らし'}, JSON.stringify(category));
   assert.equal(sheets.Tasks.rows[1][7], '暮らし');
-  assert.equal(sheets.Tasks.getRange(2,8).getNote(), 'NIIGO:["c1"]');
+  assert.equal(sheets.Tasks.rows[1][9], 'c1');
 });
 
 test('category ID remains linked when its displayed task label is stale', () => {
   const {context, sheets} = fixture();
-  sheets.Tasks.getRange(2, 8).setNote('NIIGO:["c1"]');
   sheets.Categories.rows[1][0] = '暮らし';
   assert.deepEqual(Array.from(context.getData().Tasks[0].categoryIds), ['c1']);
 });
@@ -102,11 +101,30 @@ test('category ID remains linked when its displayed task label is stale', () => 
 test('editing a task category updates its stored category ID', () => {
   const {context, sheets} = fixture();
   sheets.Categories.rows.push(['仕事', '', 'c2']);
-  sheets.Tasks.getRange(2, 8).setNote('NIIGO:["c1"]');
   sheets.Tasks.getRange(2, 8).setValue('仕事');
   context.sheetEdited({range: sheets.Tasks.getRange(2, 8), value: '仕事', oldValue: '家事'});
   assert.deepEqual(Array.from(context.getData().Tasks[0].categoryIds), ['c2']);
-  assert.equal(sheets.Tasks.getRange(2, 8).getNote(), 'NIIGO:["c2"]');
+  assert.equal(sheets.Tasks.rows[1][9], 'c2');
+});
+
+test('pasting task categories updates hidden IDs for every row', () => {
+  const {context, sheets} = fixture();
+  sheets.Categories.rows.push(['仕事', '', 'c2']);
+  sheets.Tasks.getRange(2, 8).setValue('仕事');
+  sheets.Tasks.getRange(3, 8).setValue('仕事');
+  context.sheetEdited({range: sheets.Tasks.getRange(2, 8, 2, 1)});
+  assert.equal(sheets.Tasks.rows[1][9], 'c2');
+  assert.equal(sheets.Tasks.rows[2][9], 'c2');
+});
+
+test('pasting category names refreshes task labels by category ID', () => {
+  const {context, sheets} = fixture();
+  sheets.Categories.rows.push(['仕事', '', 'c2']);
+  sheets.Categories.getRange(2, 1).setValue('暮らし');
+  sheets.Categories.getRange(3, 1).setValue('職場');
+  context.sheetEdited({range: sheets.Categories.getRange(2, 1, 2, 1)});
+  assert.equal(sheets.Tasks.rows[1][7], '暮らし');
+  assert.equal(sheets.Tasks.rows[1][9], 'c1');
 });
 
 test('updates the intended ID after rows move and rejects stale edits', () => {
