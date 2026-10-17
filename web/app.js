@@ -32,7 +32,7 @@ const closer = document.getElementById('closer');
       } else {
         const name = view;
         main.innerHTML = '<div class="toolbar"><h2>' + labels[name] + '</h2><button class="primary" data-edit="' + name + '">追加</button></div>' +
-          (data[name].length ? '<div class="panel">' + data[name].map(item => '<div class="row"><div><strong>' + esc(item.name) + '</strong>' + (name === 'Rounds' ? ' <span class="muted">' + esc(roundStatus[item.status] || item.status) + '</span>' : '') + (item.description ? '<div class="muted">' + esc(item.description) + '</div>' : '') + '</div><div><button data-edit="' + name + '" data-id="' + esc(item.id) + '">編集</button> ' + (name === 'Rounds' && item.status !== 'Closed' ? '<button data-close="' + esc(item.id) + '">終了</button>' : '') + '</div></div>').join('') + '</div>' : '<div class="empty">まだありません。</div>');
+          (data[name].length ? '<div class="panel">' + data[name].map(item => '<div class="row"><div><strong>' + esc(item.name) + '</strong>' + (name === 'Rounds' ? ' <span class="muted">' + esc(roundStatus[item.status] || item.status) + '</span>' : '') + (item.description ? '<div class="muted">' + esc(item.description) + '</div>' : '') + '</div><div>' + (name === 'Categories' ? '<button data-add-task-category="' + esc(item.id) + '">このカテゴリでタスクを追加</button> ' : '') + '<button data-edit="' + name + '" data-id="' + esc(item.id) + '">編集</button> ' + (name === 'Rounds' && item.status !== 'Closed' ? '<button data-close="' + esc(item.id) + '">終了</button>' : '') + '</div></div>').join('') + '</div>' : '<div class="empty">まだありません。</div>');
       }
     }
     function select(name, choices, chosen, multiple) {
@@ -40,9 +40,9 @@ const closer = document.getElementById('closer');
       return '<label>' + name + '<select name="' + name + '" ' + (multiple ? 'multiple' : '') + '>' + (multiple ? '' : '<option value="">なし</option>') + choices.map(c => '<option value="' + esc(c.id) + '" ' + (selected.has(c.id) ? 'selected' : '') + '>' + esc(c.name) + '</option>').join('') + '</select></label>';
     }
     function field(label, name, value, type = 'text') { return '<label>' + label + (type === 'textarea' ? '<textarea name="' + name + '">' + esc(value) + '</textarea>' : '<input name="' + name + '" type="' + type + '" value="' + esc(value) + '">') + '</label>'; }
-    function openEditor(name, id) {
-      editing = { name, item: id ? data[name].find(x => x.id === id) : null };
-      const item = editing.item || {};
+    function openEditor(name, id, defaults = {}) {
+      editing = { name, item: id ? data[name].find(x => x.id === id) : null, defaults };
+      const item = editing.item || defaults;
       document.getElementById('editorTitle').textContent = (id ? '編集: ' : '追加: ') + labels[name];
       let html = '';
       if (name === 'Tasks') {
@@ -98,9 +98,10 @@ const closer = document.getElementById('closer');
     });
     document.getElementById('reload').addEventListener('click', load);
     document.addEventListener('click', event => {
-      const button = event.target.closest('[data-view], [data-edit], [data-close], [data-dismiss]');
+      const button = event.target.closest('[data-view], [data-edit], [data-close], [data-dismiss], [data-add-task-category]');
       if (!button) return;
       if (button.dataset.view) { view = button.dataset.view; render(); }
+      else if (button.dataset.addTaskCategory) openEditor('Tasks', null, {categoryIds: [button.dataset.addTaskCategory]});
       else if (button.dataset.edit) openEditor(button.dataset.edit, button.dataset.id);
       else if (button.dataset.close) openClose(button.dataset.close);
       else if (button.dataset.dismiss) document.getElementById(button.dataset.dismiss).close();
