@@ -12,6 +12,12 @@ class Sheet {
   getRange(row, column, height = 1, width = 1) {
     const sheet = this;
     return {
+      getSheet() { return sheet; },
+      getRow() { return row; },
+      getLastRow() { return row + height - 1; },
+      getColumn() { return column; },
+      getNumRows() { return height; },
+      getNumColumns() { return width; },
       getDisplayValues() { return Array.from({length: height}, (_, r) => Array.from({length: width}, (_, c) => String(sheet.rows[row+r-1]?.[column+c-1] ?? ''))); },
       getDisplayValue() { return String(sheet.rows[row-1]?.[column-1] ?? ''); },
       getNote() { return sheet.notes[`${row}:${column}`] || ''; },
@@ -84,6 +90,23 @@ test('master rename updates visible references by ID', () => {
   context.saveEntity('Categories', {...category, name: '暮らし'}, JSON.stringify(category));
   assert.equal(sheets.Tasks.rows[1][7], '暮らし');
   assert.equal(sheets.Tasks.getRange(2,8).getNote(), 'NIIGO:["c1"]');
+});
+
+test('category ID remains linked when its displayed task label is stale', () => {
+  const {context, sheets} = fixture();
+  sheets.Tasks.getRange(2, 8).setNote('NIIGO:["c1"]');
+  sheets.Categories.rows[1][0] = '暮らし';
+  assert.deepEqual(Array.from(context.getData().Tasks[0].categoryIds), ['c1']);
+});
+
+test('editing a task category updates its stored category ID', () => {
+  const {context, sheets} = fixture();
+  sheets.Categories.rows.push(['仕事', '', 'c2']);
+  sheets.Tasks.getRange(2, 8).setNote('NIIGO:["c1"]');
+  sheets.Tasks.getRange(2, 8).setValue('仕事');
+  context.sheetEdited({range: sheets.Tasks.getRange(2, 8), value: '仕事', oldValue: '家事'});
+  assert.deepEqual(Array.from(context.getData().Tasks[0].categoryIds), ['c2']);
+  assert.equal(sheets.Tasks.getRange(2, 8).getNote(), 'NIIGO:["c2"]');
 });
 
 test('updates the intended ID after rows move and rejects stale edits', () => {

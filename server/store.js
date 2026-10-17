@@ -49,8 +49,7 @@ function idsFor(cell, visible, masters, multiple) {
   if (cell?.note?.startsWith('NIIGO:')) {
     try { ids = JSON.parse(cell.note.slice(6)); } catch { /* Use the displayed names. */ }
   }
-  if (!Array.isArray(ids) || ids.some(id => !masters.some(master => master.id === id)) ||
-      ids.map(id => masters.find(master => master.id === id).name).join(', ') !== labels.join(', ')) {
+  if (!Array.isArray(ids) || ids.some(id => !masters.some(master => master.id === id))) {
     ids = labels.map(label => {
       const master = masters.find(item => item.name === label);
       if (!master) throw new Error(`参照先が見つかりません: ${label}`);

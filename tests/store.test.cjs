@@ -60,6 +60,14 @@ test('renaming a master retains task references', async () => {
   assert.equal(notes.Tasks['1:7'], 'NIIGO:["c1"]');
 });
 
+test('category ID remains linked when its displayed task label is stale', async () => {
+  const {SheetStore} = await import('../server/store.js');
+  const {rows, gateway} = fixture();
+  rows.Categories[1][0] = '暮らし';
+  const data = await new SheetStore(gateway).read();
+  assert.deepEqual(data.Tasks[0].categoryIds, ['c1']);
+});
+
 test('closing a round moves pending tasks and retains completed tasks', async () => {
   const {SheetStore} = await import('../server/store.js');
   const {rows, gateway} = fixture();

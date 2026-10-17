@@ -139,9 +139,7 @@ function referenceIds_(cell, text, masters, multiple) {
     try { ids = JSON.parse(note.slice(6)); } catch (_) { /* Resolve visible text below. */ }
   }
   const visibleNames = text ? text.split(',').map(value => value.trim()).filter(Boolean) : [];
-  const matchingNames = ids && ids.map(id => masters.find(row => row.id === id)?.name);
-  if (!Array.isArray(ids) || ids.some(id => !masters.some(row => row.id === id)) ||
-      visibleNames.join(', ') !== matchingNames.join(', ')) {
+  if (!Array.isArray(ids) || ids.some(id => !masters.some(row => row.id === id))) {
     ids = visibleNames.map(name => {
       const found = masters.find(row => row.name === name);
       if (!found) throw new Error('参照先が見つかりません: ' + name);
