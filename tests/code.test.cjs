@@ -117,6 +117,27 @@ test('category ID remains linked when its displayed task label is stale', () => 
   assert.deepEqual(Array.from(context.getData().Tasks[0].categoryIds), ['c1']);
 });
 
+test('an unrelated sheet edit repairs category and round IDs from their displayed names', () => {
+  const {context, sheets} = fixture();
+  sheets.Categories.rows.push(['仕事', '', 'c2']);
+  sheets.Tasks.rows[1][9] = 'c2';
+  sheets.Tasks.rows[1][11] = 'r2';
+  sheets.Tasks.getRange(2, 4).setValue('洗濯物を干す');
+  context.sheetEdited({range: sheets.Tasks.getRange(2, 4), value: '洗濯物を干す', oldValue: '洗濯'});
+  assert.equal(sheets.Tasks.rows[1][7], '家事');
+  assert.equal(sheets.Tasks.rows[1][9], 'c1');
+  assert.equal(sheets.Tasks.rows[1][1], 'Sprint 1');
+  assert.equal(sheets.Tasks.rows[1][11], 'r1');
+});
+
+test('editing a round name refreshes its task label without changing the ID', () => {
+  const {context, sheets} = fixture();
+  sheets.Rounds.getRange(2, 3).setValue('来週');
+  context.sheetEdited({range: sheets.Rounds.getRange(2, 3), value: '来週', oldValue: 'Sprint 1'});
+  assert.equal(sheets.Tasks.rows[1][1], '来週');
+  assert.equal(sheets.Tasks.rows[1][11], 'r1');
+});
+
 test('assignee ID remains linked when its displayed name is stale', () => {
   const {context, sheets} = fixture();
   sheets.Members.rows[1][0] = '花子';
@@ -129,6 +150,22 @@ test('editing a task category updates its stored category ID', () => {
   sheets.Tasks.getRange(2, 8).setValue('仕事');
   context.sheetEdited({range: sheets.Tasks.getRange(2, 8), value: '仕事', oldValue: '家事'});
   assert.deepEqual(Array.from(context.getData().Tasks[0].categoryIds), ['c2']);
+  assert.equal(sheets.Tasks.rows[1][9], 'c2');
+});
+
+test('editing a task round updates its stored round ID', () => {
+  const {context, sheets} = fixture();
+  sheets.Tasks.getRange(2, 2).setValue('Sprint 2');
+  context.sheetEdited({range: sheets.Tasks.getRange(2, 2), value: 'Sprint 2', oldValue: 'Sprint 1'});
+  assert.deepEqual(Array.from(context.getData().Tasks[0].roundIds), ['r2']);
+  assert.equal(sheets.Tasks.rows[1][11], 'r2');
+});
+
+test('a pasted range starting at the header still updates task reference IDs', () => {
+  const {context, sheets} = fixture();
+  sheets.Categories.rows.push(['仕事', '', 'c2']);
+  sheets.Tasks.getRange(2, 8).setValue('仕事');
+  context.sheetEdited({range: sheets.Tasks.getRange(1, 8, 2, 1)});
   assert.equal(sheets.Tasks.rows[1][9], 'c2');
 });
 

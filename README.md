@@ -27,7 +27,7 @@ NIIGO はスプレッドシートの `Tasks`、`Categories`、`Rounds`、`Member
 
 ## Apps Script の動的ソースをデプロイ
 
-`npm run gas:deploy` はサービスアカウントを使い、既存シートの `Tasks` に参照先 ID の列を追加し、既存タスクの値を補完します。H 列の `id` は AA 列へ移し、旧形式の ID メモも削除します。その後、`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` が示す Drive ファイルへ `gas/dynamic/Runtime.js` をアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run gas:bootstrap` を再実行します。
+`npm run gas:deploy` はサービスアカウントを使い、既存シートの `Tasks` に参照先 ID の列を追加し、既存タスクの値を補完します。表示されているカテゴリ名・ラウンド名・担当者名と ID が異なる場合は、表示名に合わせて ID を更新します。H 列の `id` は AA 列へ移し、旧形式の ID メモも削除します。その後、`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` が示す Drive ファイルへ `gas/dynamic/Runtime.js` をアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run gas:bootstrap` を再実行します。
 
 ## シートでの操作
 

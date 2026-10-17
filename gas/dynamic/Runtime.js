@@ -68,7 +68,7 @@ function setup() {
   // Repair rows that were added before the installable edit trigger existed.
   // This also makes setup a safe one-time recovery action for older sheets.
   ensureIds_(spreadsheet);
-  backfillReferenceIds_(spreadsheet);
+  syncTaskReferenceIds_(allSchemas_(spreadsheet));
   for (const trigger of ScriptApp.getProjectTriggers()) {
     if (['sheetEdited', 'sheetOpened'].includes(trigger.getHandlerFunction())) ScriptApp.deleteTrigger(trigger);
   }
@@ -133,8 +133,7 @@ function ensureIds_(spreadsheet) {
   }
 }
 
-function backfillReferenceIds_(spreadsheet) {
-  const schemas = allSchemas_(spreadsheet);
+function syncTaskReferenceIds_(schemas) {
   const masters = {};
   for (const name of Object.values(REF_COLUMNS)) {
     masters[name] = rows_(schemas[name]);
@@ -145,11 +144,18 @@ function backfillReferenceIds_(spreadsheet) {
     for (const [field, masterName] of Object.entries(REF_COLUMNS)) {
       const hidden = REF_ID_COLUMNS[field];
       const cell = schemas.Tasks.sheet.getRange(task._row, schemas.Tasks.columns[field]);
-      if (!task[hidden]) {
-        const ids = referenceIds_(cell, task[field], masters[masterName], field === 'assignees');
-        if (ids.length) schemas.Tasks.sheet.getRange(task._row, schemas.Tasks.columns[hidden])
-          .setValue(field === 'assignees' ? JSON.stringify(ids) : ids[0]);
-      }
+      let ids;
+      try {
+        const names = task[field].split(',').map(name => name.trim()).filter(Boolean);
+        if (field !== 'assignees' && names.length > 1) throw new Error('参照先は1件だけ選択してください。');
+        ids = [...new Set(names.map(name => {
+          const master = masters[masterName].find(item => item.name === name);
+          if (!master) throw new Error('参照先が見つかりません: ' + name);
+          return master.id;
+        }))];
+      } catch (error) { throw new Error('Tasks タブの ' + task._row + ' 行目: ' + error.message); }
+      const expected = field === 'assignees' && ids.length ? JSON.stringify(ids) : ids[0] || '';
+      if (task[hidden] !== expected) schemas.Tasks.sheet.getRange(task._row, schemas.Tasks.columns[hidden]).setValue(expected);
       if (cell.getNote().startsWith('NIIGO:')) cell.setNote('');
     }
   }
@@ -390,7 +396,7 @@ function rebuildValidations_(spreadsheet) {
 }
 
 function sheetEdited(e) {
-  if (!e || !e.range || e.range.getRow() === 1) return;
+  if (!e || !e.range || e.range.getLastRow() < 2) return;
   const sheet = e.range.getSheet();
   if (!NIIGO[sheet.getName()]) return;
   withLock_(() => {
@@ -412,28 +418,6 @@ function sheetEdited(e) {
       sheet.getRange(start, editedCol).setValue(e.oldValue || 'Planned');
       spreadsheet.toast('ラウンドを終了するには、Web 画面で未完了タスクの移動先を選んでください。');
     }
-    if (schema.name === 'Tasks') {
-      for (const field of Object.keys(REF_COLUMNS)) {
-        if (schema.columns[field] < editedCol || schema.columns[field] >= editedCol + e.range.getNumColumns()) continue;
-        const master = rows_(schemas[REF_COLUMNS[field]]);
-        assertIds_(master, REF_COLUMNS[field]);
-        uniqueNames_(master, REF_COLUMNS[field]);
-        for (let row = start; row <= end; row++) {
-          const cell = sheet.getRange(row, schema.columns[field]);
-          const names = cell.getDisplayValue().split(',').map(s => s.trim()).filter(Boolean);
-          if (field !== 'assignees' && names.length > 1) throw new Error('参照先は1件だけ選択してください。');
-          const ids = names.map(name => {
-            const found = master.find(item => item.name === name);
-            if (!found) throw new Error('参照先が見つかりません: ' + name);
-            return found.id;
-          });
-          const hidden = REF_ID_COLUMNS[field];
-          const uniqueIds = [...new Set(ids)];
-          sheet.getRange(row, schema.columns[hidden]).setValue(field === 'assignees' && uniqueIds.length ? JSON.stringify(uniqueIds) : uniqueIds[0] || '');
-          cell.setNote('');
-        }
-      }
-    }
     if (single && schema.name !== 'Tasks' && editedCol === schema.columns.name) {
       const id = sheet.getRange(start, schema.columns.id).getDisplayValue();
       const currentName = sheet.getRange(start, editedCol).getDisplayValue().trim();
@@ -442,23 +426,13 @@ function sheetEdited(e) {
         sheet.getRange(start, editedCol).setValue(e.oldValue || '');
         throw new Error('名前は必須で、重複できません。');
       }
-      if (e.oldValue && e.oldValue !== currentName) {
-        const field = Object.keys(REF_COLUMNS).find(key => REF_COLUMNS[key] === schema.name);
-        for (const task of rows_(schemas.Tasks)) {
-          const cell = schemas.Tasks.sheet.getRange(task._row, schemas.Tasks.columns[field]);
-          const names = cell.getDisplayValue().split(',').map(value => value.trim()).filter(Boolean);
-          if (!names.includes(e.oldValue)) continue;
-          cell.setValue(names.map(name => name === e.oldValue ? currentName : name).join(', '));
-        }
-      }
-      const data = snapshot_();
-      refreshReferences_(schemas, data, schema.name, id, currentName);
     }
-    if (!single && schema.name !== 'Tasks' &&
+    if (schema.name !== 'Tasks' &&
         schema.columns.name >= editedCol && schema.columns.name < editedCol + e.range.getNumColumns()) {
       const data = snapshot_();
       data[schema.name].forEach(master => refreshReferences_(schemas, data, schema.name, master.id, master.name));
     }
+    syncTaskReferenceIds_(schemas);
     rebuildValidations_(spreadsheet);
   });
 }

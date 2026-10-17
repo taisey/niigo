@@ -98,14 +98,7 @@ export async function ensureReferenceIdColumns(gateway: SheetsGateway) {
   for (let row = 1; row < rows.length; row++) {
     for (const reference of planned) {
       const current = reference.existing === undefined ? '' : value(rows[row], reference.targetColumn).trim();
-      if (current) {
-        const ids = reference.multiple ? (() => {
-          try { return JSON.parse(current); } catch { return null; }
-        })() : [current];
-        if (!Array.isArray(ids) || (!reference.multiple && ids.length !== 1) || ids.some(id => !reference.masters.byId.has(id))) {
-          throw new Error(`Tasks タブの ${row + 1} 行目の ${reference.hidden} が不正です。`);
-        }
-      } else {
+      if (!current) {
         const ids = resolveIds(rows[row], reference.visibleColumn, reference.masters, reference.multiple, row + 1);
         if (ids.length) {
           requests.push(writeValue(sheetId, row, reference.targetColumn, reference.multiple ? JSON.stringify(ids) : ids[0]));
@@ -132,6 +125,36 @@ export async function ensureReferenceIdColumns(gateway: SheetsGateway) {
   }
   if (requests.length) await gateway.write(requests);
   return {created, backfilled, clearedNotes};
+}
+
+export async function reconcileTaskReferenceIds(gateway: SheetsGateway): Promise<number> {
+  const raw = await gateway.read();
+  const tasks = raw.sheets.find(sheet => sheet.properties?.title === 'Tasks');
+  if (!tasks) return 0;
+  const rows = tasks.data?.[0]?.rowData || [];
+  const headers = (rows[0]?.values || []).map(item => item?.formattedValue || '');
+  const references = REFERENCES.map(reference => {
+    const master = mastersFor(raw.sheets.find(sheet => sheet.properties?.title === reference.master));
+    return {...reference, visibleColumn: column(headers, reference.visible), hiddenColumn: column(headers, reference.hidden), byName: master.byName};
+  });
+  const requests: object[] = [];
+  for (let row = 1; row < rows.length; row++) {
+    for (const reference of references) {
+      const names = value(rows[row], reference.visibleColumn).split(',').map(name => name.trim()).filter(Boolean);
+      if (!reference.multiple && names.length > 1) throw new Error(`Tasks タブの ${row + 1} 行目の ${reference.visible} が複数あります。`);
+      const ids = [...new Set(names.map(name => {
+        const id = reference.byName.get(name);
+        if (!id) throw new Error(`Tasks タブの ${row + 1} 行目の参照先が見つかりません: ${name}`);
+        return id;
+      }))];
+      const expected = reference.multiple && ids.length ? JSON.stringify(ids) : ids[0] || '';
+      if (value(rows[row], reference.hiddenColumn) !== expected) {
+        requests.push(writeValue(tasks.properties.sheetId, row, reference.hiddenColumn, expected));
+      }
+    }
+  }
+  if (requests.length) await gateway.write(requests);
+  return requests.length;
 }
 
 export async function moveTaskIdToHiddenColumn(gateway: SheetsGateway) {

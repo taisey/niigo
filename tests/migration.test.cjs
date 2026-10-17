@@ -49,6 +49,27 @@ test('migration preserves an existing categoryId and adds only missing columns',
   assert.equal(writes.filter(request => request.addProtectedRange).length, 2);
 });
 
+test('deployment repairs category and round IDs using displayed names', async () => {
+  const {reconcileTaskReferenceIds} = await import('../dist/gas/deploy/reference-id-migration.js');
+  const writes = [];
+  const gateway = {
+    read: async () => ({sheets: [
+      {properties: {title: 'Tasks', sheetId: 10}, data: [{rowData: [
+        row('title', 'category', 'round', 'categoryId', 'roundId', 'assignees', 'assigneeIds'),
+        row('洗濯', '家事', '今週', 'c2', 'r2', '太郎', '["m1"]')
+      ]}]},
+      {properties: {title: 'Categories', sheetId: 20}, data: [{rowData: [row('name', 'id'), row('家事', 'c1'), row('仕事', 'c2')]}]},
+      {properties: {title: 'Rounds', sheetId: 40}, data: [{rowData: [row('name', 'id'), row('今週', 'r1'), row('来週', 'r2')]}]},
+      {properties: {title: 'Members', sheetId: 30}, data: [{rowData: [row('name', 'id'), row('太郎', 'm1')]}]}
+    ]}),
+    write: async requests => {writes.push(...requests);}
+  };
+  assert.equal(await reconcileTaskReferenceIds(gateway), 2);
+  assert.deepEqual(writes.map(request => ({column: request.updateCells.range.startColumnIndex, value: request.updateCells.rows[0].values[0].userEnteredValue.stringValue})), [
+    {column: 3, value: 'c1'}, {column: 4, value: 'r1'}
+  ]);
+});
+
 test('moves task IDs from H to AA and keeps reference IDs beside them', async () => {
   const {moveTaskIdToHiddenColumn} = await import('../dist/gas/deploy/reference-id-migration.js');
   const headers = Array(29).fill('');

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { GoogleAuth } from 'google-auth-library';
 import { GoogleSheetsGateway } from '../../server/sheets/google-sheets-gateway.js';
-import { ensureReferenceIdColumns, moveTaskIdToHiddenColumn } from './reference-id-migration.js';
+import { ensureReferenceIdColumns, moveTaskIdToHiddenColumn, reconcileTaskReferenceIds } from './reference-id-migration.js';
 
 const sourceFileId = process.env.NIIGO_APPS_SCRIPT_SOURCE_FILE_ID?.trim();
 if (!sourceFileId) throw new Error('NIIGO_APPS_SCRIPT_SOURCE_FILE_ID is required in .env');
@@ -39,6 +39,8 @@ const migration = await ensureReferenceIdColumns(gateway);
 console.log(`Checked Tasks reference ID columns (${migration.created.join(', ') || 'existing'}, ${migration.backfilled} values backfilled, ${migration.clearedNotes} notes cleared)`);
 const movedTaskId = await moveTaskIdToHiddenColumn(gateway);
 console.log(`Checked Tasks ID column (${movedTaskId ? 'moved to AA' : 'already at AA'})`);
+const reconciledIds = await reconcileTaskReferenceIds(gateway);
+console.log(`Checked Tasks reference IDs (${reconciledIds} IDs updated)`);
 const auth = new GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/drive'] });
 const client = await auth.getClient();
 const uploadUrl = `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(sourceFileId)}?uploadType=media`;
