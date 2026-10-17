@@ -32,7 +32,7 @@ function callNiigo_(name, args) {
 
 // Simple trigger: keep this self-contained because it cannot read Drive files.
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('NIIGO')
+  SpreadsheetApp.getUi().createMenu('GAS')
     .addItem('初期設定', 'setup')
     .addToUi();
 }
