@@ -1,6 +1,6 @@
 import {GoogleAuth} from 'google-auth-library';
-import type {ServiceAccount} from './config.js';
-import type {Spreadsheet} from './sheets-types.js';
+import type {ServiceAccount} from '../config.js';
+import type {Spreadsheet} from './types.js';
 
 export class GoogleSheetsGateway {
   constructor(private spreadsheetId: string, serviceAccount: ServiceAccount, private auth = new GoogleAuth({

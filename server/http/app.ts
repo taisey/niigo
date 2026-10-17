@@ -1,11 +1,11 @@
 import {createServer, type IncomingMessage, type ServerResponse} from 'node:http';
 import {readFile} from 'node:fs/promises';
-import type {SheetStore} from './store.js';
+import type {SheetStore} from '../sheets/store.js';
 
 const assets: Record<string, [URL, string]> = {
-  '/': [new URL('../../web/index.html', import.meta.url), 'text/html; charset=utf-8'],
-  '/app.js': [new URL('../web/app.js', import.meta.url), 'text/javascript; charset=utf-8'],
-  '/style.css': [new URL('../../web/style.css', import.meta.url), 'text/css; charset=utf-8']
+  '/': [new URL('../../../web/index.html', import.meta.url), 'text/html; charset=utf-8'],
+  '/app.js': [new URL('../../web/app.js', import.meta.url), 'text/javascript; charset=utf-8'],
+  '/style.css': [new URL('../../../web/style.css', import.meta.url), 'text/css; charset=utf-8']
 };
 
 function send(response: ServerResponse, status: number, value: unknown) {
@@ -33,7 +33,7 @@ export function createApp(store: SheetStore) {
         response.end(await readFile(filename));
       } else if (request.method === 'GET' && /^\/api-client\/(?:index|(?:core|models|services)\/[A-Za-z][A-Za-z0-9]*)\.js$/.test(path)) {
         response.writeHead(200, {'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff'});
-        response.end(await readFile(new URL(`../web/api-generated/${path.slice('/api-client/'.length)}`, import.meta.url)));
+        response.end(await readFile(new URL(`../../web/api-generated/${path.slice('/api-client/'.length)}`, import.meta.url)));
       } else if (request.method === 'GET' && path === '/data') {
         send(response, 200, await store.read());
       } else if (request.method === 'POST' && path === '/save') {

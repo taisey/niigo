@@ -165,4 +165,4 @@ export async function moveTaskIdToHiddenColumn(gateway: SheetsGateway) {
   ]);
   return true;
 }
-import type {Sheet, SheetCell, SheetRow, SheetsGateway} from './sheets-types.js';
+import type {Sheet, SheetCell, SheetRow, SheetsGateway} from '../../server/sheets/types.js';

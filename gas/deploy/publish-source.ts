@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { GoogleAuth } from 'google-auth-library';
-import { GoogleSheetsGateway } from '../../server/google-sheets-gateway.js';
-import { ensureReferenceIdColumns, moveTaskIdToHiddenColumn } from '../../server/reference-id-migration.js';
+import { GoogleSheetsGateway } from '../../server/sheets/google-sheets-gateway.js';
+import { ensureReferenceIdColumns, moveTaskIdToHiddenColumn } from './reference-id-migration.js';
 
 const sourceFileId = process.env.NIIGO_APPS_SCRIPT_SOURCE_FILE_ID?.trim();
 if (!sourceFileId) throw new Error('NIIGO_APPS_SCRIPT_SOURCE_FILE_ID is required in .env');

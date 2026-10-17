@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const {once} = require('node:events');
 
 test('serves the compiled TypeScript UI and routes data requests', async () => {
-  const {createApp} = await import('../dist/server/http.js');
+  const {createApp} = await import('../dist/server/http/app.js');
   const server = createApp({
     read: async () => ({Tasks: [], Categories: [], Rounds: [], Members: []}),
     save: async (name, item) => ({name, item}),

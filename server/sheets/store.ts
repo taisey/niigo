@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type {DataSnapshot} from '../web/api-generated/models/DataSnapshot.js';
-import type {Sheet, SheetCell, SheetsGateway, Spreadsheet} from './sheets-types.js';
+import type {DataSnapshot} from '../../web/api-generated/models/DataSnapshot.js';
+import type {Sheet, SheetCell, SheetsGateway, Spreadsheet} from './types.js';
 
 type SheetName = keyof DataSnapshot;
 type SheetRecord = {_row: number; _cells: SheetCell[]; id: string; name: string; [field: string]: any};
