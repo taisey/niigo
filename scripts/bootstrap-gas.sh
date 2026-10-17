@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
-  echo 'Usage: npm run gas:bootstrap -- DRIVE_FILE_ID' >&2
+  echo 'Usage: bash scripts/bootstrap-gas.sh DRIVE_FILE_ID' >&2
   exit 1
 fi
 source_file_id="$1"

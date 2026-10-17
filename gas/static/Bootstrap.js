@@ -1,10 +1,10 @@
-// Generated from this file for the bound Apps Script project. Keep the source
-// pass the source file ID to `npm run gas:bootstrap -- DRIVE_FILE_ID`.
+// Generated from this file for the bound Apps Script project.
+// Run `npm run gas:bootstrap` after changing the source file ID in .env.
 const NIIGO_DYNAMIC_SOURCE_FILE_ID = '__NIIGO_APPS_SCRIPT_SOURCE_FILE_ID__';
 
 function loadNiigoBundle_() {
   if (NIIGO_DYNAMIC_SOURCE_FILE_ID.startsWith('__')) {
-    throw new Error('動的ソースの Drive ファイル ID を引数にして gas:bootstrap を実行してください。');
+    throw new Error('.env に動的ソースの Drive ファイル ID を設定して gas:bootstrap を実行してください。');
   }
   const text = DriveApp.getFileById(NIIGO_DYNAMIC_SOURCE_FILE_ID).getBlob().getDataAsString('UTF-8');
   const bundle = JSON.parse(text);
