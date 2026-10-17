@@ -28,7 +28,7 @@ const closer = document.getElementById('closer');
         const tasks = view === 'backlog' ? data.Tasks.filter(t => !t.roundIds.length) : data.Tasks.filter(t => active.some(r => t.roundIds.includes(r.id)));
         const heading = view === 'backlog' ? 'タスク' : active.length ? '今のラウンド: ' + active.map(r => r.name).join('、') : '今のラウンド';
         main.innerHTML = '<div class="toolbar"><div><h2>' + esc(heading) + '</h2>' + (view === 'current' && !active.length ? '<p class="muted">進行中のラウンドはありません。</p>' : '') + '</div><button class="primary" data-edit="Tasks">タスクを追加</button></div>' +
-          (tasks.length ? '<div class="cards">' + tasks.map(t => '<article role="button" tabindex="0" data-edit="Tasks" data-id="' + esc(t.id) + '"><h3>' + esc(t.title) + '</h3>' + categoryBadges(t) + '<div class="muted">' + esc(taskStatus[t.status] || t.status) + (t.due_date ? ' · 期限 ' + esc(t.due_date) : '') + (t.assignees ? ' · ' + esc(t.assignees) : '') + '</div>' + (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</article>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
+          (tasks.length ? '<div class="cards">' + tasks.map(t => '<article role="button" tabindex="0" data-edit="Tasks" data-id="' + esc(t.id) + '"><h3>' + esc(t.title) + '</h3>' + categoryBadges(t) + '<div class="task-details"><span>ステータス: ' + esc(taskStatus[t.status] || t.status) + '</span>' + (t.due_date ? '<span>期限: ' + esc(t.due_date) + '</span>' : '') + (t.assignees ? '<span>担当者: ' + esc(t.assignees) + '</span>' : '') + '</div>' + (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</article>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
       } else {
         const name = view;
         main.innerHTML = '<div class="toolbar"><h2>' + labels[name] + '</h2><button class="primary" data-edit="' + name + '">追加</button></div>' +
@@ -42,7 +42,7 @@ const closer = document.getElementById('closer');
     }
     function categoryBadges(task) {
       const categories = data.Categories.filter(category => (task.categoryIds || []).includes(category.id));
-      return categories.length ? '<div class="task-categories">' + categories.map(category => '<span class="category-badge"><span aria-hidden="true">📁</span> ' + esc(category.name) + '</span>').join('') + '</div>' : '';
+      return categories.length ? '<div class="task-categories"><span class="task-detail-label">カテゴリ:</span>' + categories.map(category => '<span class="category-badge"><span aria-hidden="true">📁</span> ' + esc(category.name) + '</span>').join('') + '</div>' : '';
     }
     function select(name, choices, chosen, multiple) {
       const selected = new Set(chosen || []);
