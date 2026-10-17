@@ -14,6 +14,7 @@
     .cards { display: grid; gap: 12px; margin-top: 16px; }
     .kanban { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; align-items: start; }
     .kanban-column { background: #edf1ed; border-radius: 12px; padding: 12px; min-width: 0; }
+    .kanban-column.drag-over { background: #dcebe0; outline: 2px dashed #5b9874; outline-offset: 2px; }
     .kanban-column > h3 { display: flex; justify-content: space-between; align-items: center; margin: 2px 2px 12px; font-size: 1rem; }
     .count { display: inline-grid; place-items: center; min-width: 24px; height: 24px; border-radius: 999px; background: #dce5de; font-size: .8rem; }
     .kanban-cards { display: grid; gap: 10px; }
@@ -27,6 +28,8 @@
     .task-actions button.danger { margin-right: 0; }
     article, .panel { background: white; border: 1px solid #dce4dd; border-radius: 12px; padding: 16px; }
     article { cursor: pointer; }
+    article[draggable="true"] { cursor: grab; }
+    article.dragging { opacity: .45; cursor: grabbing; }
     article h3 { margin: 0 0 6px; }
     .muted { color: #60736b; font-size: .9rem; }
     .error { color: #a02525; background: #fff0ee; padding: 12px; border-radius: 8px; margin: 12px 0; }

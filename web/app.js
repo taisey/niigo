@@ -1,4 +1,4 @@
-let data = null, view = 'dashboard', editing = null, closing = null;
+let data = null, view = 'dashboard', editing = null, closing = null, draggedTaskId = null;
 const editor = document.getElementById('editor');
 const closer = document.getElementById('closer');
     const labels = { Tasks: 'タスク', Categories: 'カテゴリ', Rounds: 'ラウンド', Members: 'メンバー' };
@@ -22,7 +22,7 @@ const closer = document.getElementById('closer');
     }
     function taskCard(task) {
       const roundNames = (task.roundIds || []).map(id => data.Rounds.find(round => round.id === id)?.name).filter(Boolean);
-      return '<article role="button" tabindex="0" data-edit="Tasks" data-id="' + esc(task.id) + '"><h3>' + esc(task.title) + '</h3>' + categoryBadges(task) + '<div class="task-details"><span>ステータス: ' + esc(taskStatus[task.status] || task.status) + '</span>' + (roundNames.length ? '<span>ラウンド: ' + esc(roundNames.join('、')) + '</span>' : '') + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>担当者: ' + esc(task.assignees) + '</span>' : '') + '</div>' + (task.description ? '<p>' + esc(task.description) + '</p>' : '') + '</article>';
+      return '<article role="button" tabindex="0" draggable="true" data-drag-task="' + esc(task.id) + '" data-edit="Tasks" data-id="' + esc(task.id) + '"><h3>' + esc(task.title) + '</h3>' + categoryBadges(task) + '<div class="task-details"><span>ステータス: ' + esc(taskStatus[task.status] || task.status) + '</span>' + (roundNames.length ? '<span>ラウンド: ' + esc(roundNames.join('、')) + '</span>' : '') + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>担当者: ' + esc(task.assignees) + '</span>' : '') + '</div>' + (task.description ? '<p>' + esc(task.description) + '</p>' : '') + '</article>';
     }
     function render() {
       nav();
@@ -31,9 +31,9 @@ const closer = document.getElementById('closer');
         const active = data.Rounds.filter(r => r.status === 'Active');
         const tasks = data.Tasks.filter(task => active.some(round => task.roundIds.includes(round.id)));
         const heading = active.length ? active.map(round => round.name).join('、') : '進行中のラウンドはありません';
-        main.innerHTML = '<div class="toolbar"><div><h2>ダッシュボード</h2><p class="muted">' + esc(heading) + '</p></div></div>' + (active.length ? '<div class="kanban">' + Object.entries(taskStatus).map(([status, label]) => {
+        main.innerHTML = '<div class="toolbar"><div><h2>ダッシュボード</h2><p class="muted">' + esc(heading) + '</p><p class="muted">タスクカードをドラッグしてステータスを変更できます。</p></div></div>' + (active.length ? '<div class="kanban">' + Object.entries(taskStatus).map(([status, label]) => {
           const statusTasks = tasks.filter(task => task.status === status);
-          return '<section class="kanban-column"><h3>' + esc(label) + '<span class="count">' + statusTasks.length + '</span></h3><div class="kanban-cards">' + (statusTasks.length ? statusTasks.map(taskCard).join('') : '<div class="empty">タスクはありません。</div>') + '</div></section>';
+          return '<section class="kanban-column" data-drop-status="' + esc(status) + '"><h3>' + esc(label) + '<span class="count">' + statusTasks.length + '</span></h3><div class="kanban-cards">' + (statusTasks.length ? statusTasks.map(taskCard).join('') : '<div class="empty">タスクはありません。</div>') + '</div></section>';
         }).join('') + '</div>' : '<div class="empty">ラウンド管理から進行中のラウンドを設定してください。</div>');
       } else if (view === 'tasks') {
         main.innerHTML = '<h2>タスク管理</h2><div class="subnav"><button class="active" data-view="tasks">タスク一覧</button><button data-view="Categories">カテゴリ管理</button><button data-view="Rounds">ラウンド管理</button><button data-view="Members">メンバー管理</button></div><div class="toolbar"><div><h3>タスク一覧</h3><p class="muted">カテゴリやラウンド、担当者は各タスクの編集から設定できます。</p></div><button class="primary" data-edit="Tasks">タスクを追加</button></div>' + (data.Tasks.length ? '<div class="task-list">' + data.Tasks.map(task => '<div class="task-row"><div class="task-row-main"><strong>' + esc(task.title) + '</strong>' + categoryBadges(task) + '<div class="task-details"><span>ステータス: ' + esc(taskStatus[task.status] || task.status) + '</span>' + ((task.roundIds || []).length ? '<span>ラウンド: ' + esc(task.roundIds.map(id => data.Rounds.find(round => round.id === id)?.name).filter(Boolean).join('、')) + '</span>' : '<span>ラウンド: 未設定</span>') + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>担当者: ' + esc(task.assignees) + '</span>' : '') + '</div></div><div class="task-actions"><button data-edit="Tasks" data-id="' + esc(task.id) + '">編集</button><button class="danger" data-delete-task="' + esc(task.id) + '">削除</button></div></div>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
@@ -120,6 +120,40 @@ const closer = document.getElementById('closer');
       try { data = await call('closeRound', closing.id, destinations, JSON.stringify(closing)); closer.close(); error(''); render(); } catch (err) { error(err.message || err); }
     });
     document.getElementById('reload').addEventListener('click', load);
+    document.addEventListener('dragstart', event => {
+      const card = event.target.closest('article[data-drag-task]');
+      if (!card) return;
+      draggedTaskId = card.dataset.dragTask;
+      card.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggedTaskId);
+    });
+    document.addEventListener('dragend', event => {
+      event.target.closest('article[data-drag-task]')?.classList.remove('dragging');
+      document.querySelectorAll('.kanban-column.drag-over').forEach(column => column.classList.remove('drag-over'));
+      draggedTaskId = null;
+    });
+    document.addEventListener('dragover', event => {
+      const column = event.target.closest('.kanban-column[data-drop-status]');
+      if (!column) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.kanban-column.drag-over').forEach(item => { if (item !== column) item.classList.remove('drag-over'); });
+      column.classList.add('drag-over');
+    });
+    document.addEventListener('drop', async event => {
+      const column = event.target.closest('.kanban-column[data-drop-status]');
+      if (!column) return;
+      event.preventDefault();
+      column.classList.remove('drag-over');
+      const id = event.dataTransfer.getData('text/plain') || draggedTaskId;
+      const task = data.Tasks.find(item => item.id === id);
+      const status = column.dataset.dropStatus;
+      if (!task || task.status === status) return;
+      const item = {id: task.id, title: task.title, description: task.description, due_date: task.due_date, status, assigneesIds: task.assigneesIds, categoryIds: task.categoryIds, roundIds: task.roundIds};
+      try { data = await call('saveEntity', 'Tasks', item, JSON.stringify(task)); error(''); render(); }
+      catch (err) { error(err.message || err); }
+    });
     document.addEventListener('click', event => {
       const button = event.target.closest('[data-view], [data-edit], [data-close], [data-dismiss], [data-add-task-category], [data-delete-task]');
       if (!button) return;
