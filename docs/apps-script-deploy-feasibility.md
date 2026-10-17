@@ -2,6 +2,8 @@
 
 2026-10-17 時点の検証結果。対象は既存の NIIGO シートに紐付く Apps Script と、Web サーバーが使うサービスアカウント。
 
+実装では `apps-script/static/` と `apps-script/dynamic/` を分けた。`npm run apps-script:deploy` は動的ソースを Drive ファイルへ更新する。Drive への更新と読み戻し確認は成功した。固定コードの clasp push は試したが、ローカルに clasp の OAuth 認証情報がなく `No credentials found.` で停止したため、対象 Apps Script プロジェクトにはまだ反映していない。
+
 ## 要件
 
 1. Apps Script の処理本体とサイドバーを Git で管理する。
@@ -19,7 +21,7 @@
 | Apps Script の実行時に Drive ファイルを読み、動的な JS として実行 | 仕様上可能、実機未検証 | Apps Script の V8 は [`eval()` と `new Function()` で生成したコードを実行する](https://developers.google.com/apps-script/guides/support/troubleshooting)。Drive のファイルは [`DriveApp.getFileById()`](https://developers.google.com/apps-script/reference/drive/drive-app) で取得できる。ただし対象プロジェクトで読み込みから各関数の呼び出しまで通す試験は未実施。 |
 | 単純トリガーから別の Drive ファイルを読む | 不可 | [単純トリガーは認可を要するサービスや別ファイルにアクセスできない](https://developers.google.com/apps-script/guides/triggers)。 |
 
-検証用ファイルは `NIIGO-feasibility-probe.js`。ファイル ID は `1IL7_FzJ1frPIV0mGO_H9Ps7TVt6qN58R`。ここには動作確認用の短い関数だけを置いており、アプリのコードや認証情報は含まない。
+動的ソースファイルの ID は `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` として `.env` から読み込む。現在の値は `1IL7_FzJ1frPIV0mGO_H9Ps7TVt6qN58R`。サービスアカウントでこのファイルを更新でき、所有者の Apps Script から読み取れる Drive ファイルとして管理する。
 
 ## 成立する構成
 
@@ -31,11 +33,11 @@
 
 初回配置と Drive 読み取り権限の承認には、所有者の OAuth 操作が一度必要。`DriveApp` の読み取りに必要なスコープを `appsscript.json` に追加し、トリガー作成者が再承認する。[スコープ追加後のトリガーは手動で再承認が必要](https://developers.google.com/apps-script/guides/services/authorization)。固定コードやマニフェストを後から変更する場合も、Apps Script プロジェクトの更新経路が別途必要になる。
 
-## 実装前に通す検証
+## Apps Script 側で残る確認
 
-1. 固定コードの小さな試作を対象プロジェクトへ一度配置し、所有者で Drive の読み取りを承認する。
-2. `onOpen` でメニューが出ること、インストール型 `sheetEdited` が Drive のソースを読んで実行できることを確認する。
-3. サイドバーの HTML テンプレートと `google.script.run` の各呼び出しを確認する。
-4. Drive ファイルをサービスアカウントで更新し、次の呼び出しで新しい処理が使われることを確認する。失敗時は前の内容に戻す。
+1. clasp の OAuth 認証後、`npm run apps-script:bootstrap` で固定コードを対象プロジェクトへ反映する。
+2. シートのメニューから `setup()` を一度実行し、Drive 読み取り権限を承認して編集トリガーを作る。
+3. `onOpen` のメニュー表示、インストール型 `sheetEdited` の処理、サイドバーと `google.script.run` の呼び出しを確認する。
+4. `npm run apps-script:deploy` 後、次の関数呼び出しから更新後のコードが動くことを確認する。
 
-この方式なら、固定コードの初回配置後はデプロイ時の更新をサービスアカウントで自動化できる見込みがある。ただし Apps Script 実機での委譲処理は未検証なので、現時点で「全経路で動作確認済み」とは言えない。また、実行時に Drive の取得が失敗するとシート上の処理も失敗する。ソースを動的に実行するため、Drive ファイルの編集権限はデプロイ用アカウントと管理者に限定する。
+固定コードの初回配置後、デプロイ時の動的ソース更新はサービスアカウントで実行できる。Apps Script 実機での委譲処理は未確認。また、実行時に Drive の取得が失敗するとシート上の処理も失敗する。ソースを動的に実行するため、Drive ファイルの編集権限はデプロイ用アカウントと管理者に限定する。

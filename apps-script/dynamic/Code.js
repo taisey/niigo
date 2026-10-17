@@ -50,7 +50,6 @@ function setup() {
     if (['sheetEdited', 'sheetOpened'].includes(trigger.getHandlerFunction())) ScriptApp.deleteTrigger(trigger);
   }
   ScriptApp.newTrigger('sheetEdited').forSpreadsheet(book).onEdit().create();
-  ScriptApp.newTrigger('sheetOpened').forSpreadsheet(book).onOpen().create();
   rebuildValidations_(book);
   return { spreadsheetUrl: book.getUrl(), spreadsheetId: id };
 }
@@ -315,17 +314,6 @@ function rebuildValidations_(book) {
   }
 }
 
-function sheetOpened() {
-  SpreadsheetApp.getUi().createMenu('NIIGO')
-    .addItem('初期設定', 'setup')
-    .addItem('担当者を選択', 'showAssignees')
-    .addItem('ラウンドを終了', 'showRoundClose')
-    .addItem('入力規則を更新', 'rebuildValidations')
-    .addToUi();
-}
-
-function onOpen() { sheetOpened(); }
-
 function sheetEdited(e) {
   if (!e || !e.range || e.range.getRow() === 1) return;
   const sheet = e.range.getSheet();
@@ -388,18 +376,6 @@ function sheetEdited(e) {
     }
     rebuildValidations_(book);
   });
-}
-
-function showAssignees() {
-  const html = HtmlService.createTemplateFromFile('SheetSidebar');
-  html.mode = 'assignees';
-  SpreadsheetApp.getUi().showSidebar(html.evaluate().setTitle('担当者を選択'));
-}
-
-function showRoundClose() {
-  const html = HtmlService.createTemplateFromFile('SheetSidebar');
-  html.mode = 'close';
-  SpreadsheetApp.getUi().showSidebar(html.evaluate().setTitle('ラウンドを終了'));
 }
 
 function getSelectedTask() {

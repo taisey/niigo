@@ -6,15 +6,13 @@
 
 - `web/` はブラウザで動く JavaScript の画面です。シートの列位置やセルのメモを意識せず、Task、Round などのデータとして扱います。
 - `server/` は Web 画面の API と Google Sheets の読み書きを担当します。画面から Google の認証情報を扱いません。
-- `apps-script/` はシート内の ID 付与、入力規則、担当者選択、ラウンド終了を担当します。Web 画面の配信には使いません。
+- `apps-script/static/` はシートのメニューと動的ソース呼び出しを担当します。`apps-script/dynamic/` は Drive から読み込む処理本体とサイドバーで、どちらも Git 管理します。
 
 ## Google Sheets と Apps Script の準備
 
-作成済みの シート には、4タブと Apps Script プロジェクトを配置済みです。シートを開き直して「NIIGO → 初期設定」を一度実行し、権限を承認してください。メニューが見えない場合は「拡張機能 → Apps Script」から `setup()` を実行します。この操作で編集トリガーと入力規則を設定します。
+作成済みの シート には、4タブと Apps Script プロジェクトを配置済みです。`.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` に動的ソースを置く Drive ファイルの ID を設定し、`npm run apps-script:bootstrap` を一度実行して固定コードを反映します。初回は clasp の Google OAuth が必要です。その後、シートの「NIIGO → 初期設定」を一度実行して Drive 読み取りと編集トリガーの権限を承認します。
 
-新しい Space を作る場合は、空のスプレッドシートに `apps-script/` の3ファイルを紐付けた Apps Script プロジェクトとして配置し、同じ初期設定を実行します。`clasp` を使う場合は `.clasp.json.example` を `.clasp.json` にコピーして、紐付けられたプロジェクトの ID を設定します。`clasp push` は `apps-script/` だけを反映します。
-
-サービスアカウントによるデプロイ時更新の要件と検証結果は [Apps Script のデプロイ時更新に関する検証](docs/apps-script-deploy-feasibility.md) にまとめています。この方式はまだ実装していません。
+新しい Space を作る場合は、`.clasp.json` の `scriptId` と `parentId` を設定して bootstrap を実行します。固定コードは `apps-script/static/`、動的コードは `apps-script/dynamic/` に置きます。
 
 ## Web 画面をローカルで起動
 
@@ -24,6 +22,12 @@
 4. `npm run dev` を実行し、`http://127.0.0.1:3000` を開きます。`npm start` でも同じように起動できます。
 
 サーバーはローカルホストで待ち受けます。家庭内で Web 画面を共有するための認証と公開方法は、まだ決めていません。公開する際は利用者の認証と Sheets への権限を設定する必要があります。
+
+## Apps Script の動的ソースをデプロイ
+
+`npm run apps-script:deploy` は `.env` の `NIIGO_APPS_SCRIPT_SOURCE_FILE_ID` とサービスアカウント認証情報を使い、`apps-script/dynamic/` のコードとサイドバーを Drive ファイルへまとめてアップロードし、読み戻して一致を確認します。通常のアプリデプロイにこのコマンドを含めてください。固定コードを変更した場合や参照先 ID を変えた場合は `npm run apps-script:bootstrap` を実行します。
+
+サービスアカウントによるデプロイ時更新の検証経緯は [Apps Script のデプロイ時更新に関する検証](docs/apps-script-deploy-feasibility.md) にまとめています。
 
 ## シートでの操作
 
