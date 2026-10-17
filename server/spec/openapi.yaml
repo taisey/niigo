@@ -79,6 +79,22 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/Conflict' }
         '502': { $ref: '#/components/responses/SheetsError' }
+  /tasks/reorder:
+    post:
+      operationId: reorderTask
+      tags: [Tasks]
+      summary: カテゴリまたはラウンド内のタスクの順番を変更する
+      description: タスクの表示順は Tasks タブの行順に保存する。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReorderTaskRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/DataSnapshot' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '502': { $ref: '#/components/responses/SheetsError' }
 components:
   schemas:
     DataSnapshot:
@@ -225,6 +241,18 @@ components:
       required: [expected]
       properties:
         expected: { type: string, description: 取得したタスクを JSON.stringify した文字列。 }
+    ReorderTaskRequest:
+      type: object
+      required: [taskId, beforeTaskId, group, groupId, expectedOrder]
+      properties:
+        taskId: { type: string, minLength: 1 }
+        beforeTaskId: { type: string, description: 移動先の直後ではなく直前に置くタスクの ID。末尾なら空文字列。 }
+        group: { type: string, enum: [Categories, Rounds] }
+        groupId: { type: string, minLength: 1 }
+        expectedOrder:
+          type: array
+          items: { type: string }
+          description: 並べ替え前のグループ内タスク ID。現在の行順と違えば 409 を返す。
     Error:
       type: object
       required: [error]
