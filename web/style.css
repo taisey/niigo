@@ -24,4 +24,9 @@
     select[multiple] { min-height: 110px; }
     .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
     .row { justify-content: space-between; border-bottom: 1px solid #edf0ed; padding: 10px 0; }
+    .row-main { min-width: 0; }
+    .folder-icon { font-size: 1.05em; }
+    .task-categories, .category-tasks { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .category-badge { display: inline-flex; align-items: center; gap: 3px; border-radius: 999px; background: #edf5ef; color: #315d45; padding: 3px 9px; font-size: .85rem; }
+    .task-link { padding: 5px 9px; font-size: .9rem; }
     @media (max-width: 600px) { body { padding: 14px; } .row { align-items: flex-start; flex-direction: column; } }

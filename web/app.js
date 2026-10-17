@@ -17,7 +17,7 @@ const closer = document.getElementById('closer');
     function error(message) { document.getElementById('error').innerHTML = message ? '<div class="error">' + esc(message) + '</div>' : ''; }
     async function load() { try { error(''); data = await call('getData'); render(); } catch (e) { error(e.message || e); document.getElementById('main').textContent = ''; } }
     function nav() {
-      const tabs = [['current','今のラウンド'],['backlog','Backlog'],['Categories','カテゴリ'],['Rounds','ラウンド'],['Members','メンバー']];
+      const tabs = [['current','今のラウンド'],['backlog','タスク'],['Categories','カテゴリ'],['Rounds','ラウンド'],['Members','メンバー']];
       document.getElementById('nav').innerHTML = tabs.map(([id, label]) => '<button class="' + (view === id ? 'active' : '') + '" data-view="' + id + '">' + label + '</button>').join('');
     }
     function render() {
@@ -26,14 +26,23 @@ const closer = document.getElementById('closer');
       if (view === 'current' || view === 'backlog') {
         const active = data.Rounds.filter(r => r.status === 'Active');
         const tasks = view === 'backlog' ? data.Tasks.filter(t => !t.roundIds.length) : data.Tasks.filter(t => active.some(r => t.roundIds.includes(r.id)));
-        const heading = view === 'backlog' ? 'Backlog' : active.length ? '今のラウンド: ' + active.map(r => r.name).join('、') : '今のラウンド';
+        const heading = view === 'backlog' ? 'タスク' : active.length ? '今のラウンド: ' + active.map(r => r.name).join('、') : '今のラウンド';
         main.innerHTML = '<div class="toolbar"><div><h2>' + esc(heading) + '</h2>' + (view === 'current' && !active.length ? '<p class="muted">進行中のラウンドはありません。</p>' : '') + '</div><button class="primary" data-edit="Tasks">タスクを追加</button></div>' +
-          (tasks.length ? '<div class="cards">' + tasks.map(t => '<article role="button" tabindex="0" data-edit="Tasks" data-id="' + esc(t.id) + '"><h3>' + esc(t.title) + '</h3><div class="muted">' + esc(taskStatus[t.status] || t.status) + (t.due_date ? ' · 期限 ' + esc(t.due_date) : '') + (t.assignees ? ' · ' + esc(t.assignees) : '') + '</div>' + (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</article>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
+          (tasks.length ? '<div class="cards">' + tasks.map(t => '<article role="button" tabindex="0" data-edit="Tasks" data-id="' + esc(t.id) + '"><h3>' + esc(t.title) + '</h3>' + categoryBadges(t) + '<div class="muted">' + esc(taskStatus[t.status] || t.status) + (t.due_date ? ' · 期限 ' + esc(t.due_date) : '') + (t.assignees ? ' · ' + esc(t.assignees) : '') + '</div>' + (t.description ? '<p>' + esc(t.description) + '</p>' : '') + '</article>').join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
       } else {
         const name = view;
         main.innerHTML = '<div class="toolbar"><h2>' + labels[name] + '</h2><button class="primary" data-edit="' + name + '">追加</button></div>' +
-          (data[name].length ? '<div class="panel">' + data[name].map(item => '<div class="row"><div><strong>' + esc(item.name) + '</strong>' + (name === 'Rounds' ? ' <span class="muted">' + esc(roundStatus[item.status] || item.status) + '</span>' : '') + (item.description ? '<div class="muted">' + esc(item.description) + '</div>' : '') + '</div><div>' + (name === 'Categories' ? '<button data-add-task-category="' + esc(item.id) + '">このカテゴリでタスクを追加</button> ' : '') + '<button data-edit="' + name + '" data-id="' + esc(item.id) + '">編集</button> ' + (name === 'Rounds' && item.status !== 'Closed' ? '<button data-close="' + esc(item.id) + '">終了</button>' : '') + '</div></div>').join('') + '</div>' : '<div class="empty">まだありません。</div>');
+          (data[name].length ? '<div class="panel">' + data[name].map(item => {
+            const categoryTasks = name === 'Categories' ? data.Tasks.filter(task => (task.categoryIds || []).includes(item.id)) : [];
+            const title = name === 'Categories' ? '<span class="folder-icon" aria-hidden="true">📁</span> ' + esc(item.name) : esc(item.name);
+            const includedTasks = name === 'Categories' ? '<div class="category-tasks">' + (categoryTasks.length ? categoryTasks.map(task => '<button class="task-link" data-edit="Tasks" data-id="' + esc(task.id) + '">' + esc(task.title) + '</button>').join('') : '<span class="muted">タスクはありません。</span>') + '</div>' : '';
+            return '<div class="row"><div class="row-main"><strong>' + title + '</strong>' + (name === 'Rounds' ? ' <span class="muted">' + esc(roundStatus[item.status] || item.status) + '</span>' : '') + (item.description ? '<div class="muted">' + esc(item.description) + '</div>' : '') + includedTasks + '</div><div>' + (name === 'Categories' ? '<button data-add-task-category="' + esc(item.id) + '">このカテゴリでタスクを追加</button> ' : '') + '<button data-edit="' + name + '" data-id="' + esc(item.id) + '">編集</button> ' + (name === 'Rounds' && item.status !== 'Closed' ? '<button data-close="' + esc(item.id) + '">終了</button>' : '') + '</div></div>';
+          }).join('') + '</div>' : '<div class="empty">まだありません。</div>');
       }
+    }
+    function categoryBadges(task) {
+      const categories = data.Categories.filter(category => (task.categoryIds || []).includes(category.id));
+      return categories.length ? '<div class="task-categories">' + categories.map(category => '<span class="category-badge"><span aria-hidden="true">📁</span> ' + esc(category.name) + '</span>').join('') + '</div>' : '';
     }
     function select(name, choices, chosen, multiple) {
       const selected = new Set(chosen || []);
