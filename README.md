@@ -7,6 +7,7 @@
 - `web/` はブラウザで動く JavaScript の画面です。シートの列位置やセルのメモを意識せず、Task、Round などのデータとして扱います。
 - `server/` は Web 画面の API と Google Sheets の読み書きを担当します。画面から Google の認証情報を扱いません。
 - `apps-script/static/` はシートのメニューと動的ソース呼び出しを担当します。`apps-script/dynamic/` は Drive から読み込む処理本体です。どちらも Git 管理します。
+- `scripts/` はローカルの `clasp` で固定コードを反映します。`deploy/` はサービスアカウントで動的コードを反映します。
 
 ## Google Sheets と Apps Script の準備
 
