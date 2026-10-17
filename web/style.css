@@ -40,6 +40,9 @@
     .row { justify-content: space-between; border-bottom: 1px solid #edf0ed; padding: 10px 0; }
     .row-main { min-width: 0; }
     .folder-icon { font-size: 1.05em; }
+    .category-details > summary { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+    .category-count { color: #60736b; font-size: .85rem; font-weight: 400; }
+    .category-details[open] > .category-tasks { padding-left: 24px; }
     .task-categories, .category-tasks, .task-details { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
     .task-details { color: #60736b; font-size: .9rem; }
     .task-detail-label { color: #60736b; font-size: .9rem; }
