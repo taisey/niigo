@@ -114,8 +114,9 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       const label = isCategory ? 'カテゴリ' : 'ラウンド';
       const selected = isCategory ? taskFilters.categoryId : taskFilters.roundId;
       const choices = isCategory ? data.Categories : data.Rounds;
-      return '<label>' + label + '<select data-task-filter="' + kind + '"><option value="">すべての' + label + '</option><option value="' + unsetFilter + '"' + (selected === unsetFilter ? ' selected' : '') + '>' + label + '未設定</option>' +
-        choices.map(item => '<option value="' + esc(item.id) + '"' + (selected === item.id ? ' selected' : '') + '>' + esc(item.name) + '</option>').join('') + '</select></label>';
+      return '<label>' + label + '<select data-task-filter="' + kind + '"><option value="">すべての' + label + '</option>' +
+        choices.map(item => '<option value="' + esc(item.id) + '"' + (selected === item.id ? ' selected' : '') + '>' + esc(item.name) + '</option>').join('') +
+        '<option value="' + unsetFilter + '"' + (selected === unsetFilter ? ' selected' : '') + '>' + label + '未設定</option></select></label>';
     }
     function tasksByCategory(tasks: Task[]) {
       const groups = data.Categories.map(category => ({id: category.id, name: category.name, tasks: tasks.filter(task => task.categoryIds.includes(category.id))})).filter(group => group.tasks.length);
