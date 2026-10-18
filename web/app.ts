@@ -247,14 +247,14 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
           '<span class="muted">メンバー管理からメンバーを追加してください。</span>') + '</fieldset>';
     }
     function refreshAssigneePicker() {
-      const chips = element('assigneeChips');
+      const chips = document.getElementById('assigneeChips');
       if (!chips) return;
       chips.innerHTML = [...editingAssigneeIds].map(id => {
         const member = data.Members.find(item => item.id === id);
         return member ? '<span class="assignee-chip">' + esc(member.name) + '<button type="button" aria-label="' + esc(member.name) + 'を担当から外す" data-remove-assignee="' + esc(id) + '">×</button></span>' : '';
       }).join('') || '<span class="muted">担当者未設定</span>';
-      const input = element('assigneeSearch') as HTMLInputElement | null;
-      const matches = element('assigneeMatches');
+      const input = document.getElementById('assigneeSearch') as HTMLInputElement | null;
+      const matches = document.getElementById('assigneeMatches');
       if (!input || !matches) return;
       const query = input.value.trim().toLocaleLowerCase();
       matches.innerHTML = query
