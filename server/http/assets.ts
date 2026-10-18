@@ -4,7 +4,9 @@ import type {ServerResponse} from 'node:http';
 const assets: Record<string, [URL, string]> = {
   '/': [new URL('../../../web/index.html', import.meta.url), 'text/html; charset=utf-8'],
   '/app.js': [new URL('../../web/app.js', import.meta.url), 'text/javascript; charset=utf-8'],
-  '/style.css': [new URL('../../../web/style.css', import.meta.url), 'text/css; charset=utf-8']
+  '/style.css': [new URL('../../../web/style.css', import.meta.url), 'text/css; charset=utf-8'],
+  '/niigo-logo.svg': [new URL('../../../web/niigo-logo.svg', import.meta.url), 'image/svg+xml'],
+  '/favicon.svg': [new URL('../../../web/favicon.svg', import.meta.url), 'image/svg+xml']
 };
 
 export async function serveAsset(path: string, response: ServerResponse): Promise<boolean> {

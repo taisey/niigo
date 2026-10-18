@@ -17,7 +17,16 @@ test('serves the compiled TypeScript UI and routes data requests', async () => {
   try {
     const page = await fetch(root);
     assert.equal(page.status, 200);
-    assert.match(await page.text(), /src="\/app\.js"/);
+    const html = await page.text();
+    assert.match(html, /src="\/app\.js"/);
+    assert.match(html, /src="\/niigo-logo\.svg"/);
+    assert.match(html, /href="\/favicon\.svg"/);
+    for (const assetPath of ['/niigo-logo.svg', '/favicon.svg']) {
+      const asset = await fetch(`${root}${assetPath}`);
+      assert.equal(asset.status, 200);
+      assert.equal(asset.headers.get('content-type'), 'image/svg+xml');
+      assert.match(await asset.text(), /<svg\b/);
+    }
     const script = await fetch(`${root}/app.js`);
     assert.match(await script.text(), /from '\/api-client\/index\.js'/);
     const client = await fetch(`${root}/api-client/index.js`);

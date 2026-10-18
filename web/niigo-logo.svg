@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 690 220" role="img" aria-labelledby="title desc">
+  <title id="title">NIIGO logo</title>
+  <desc id="desc">Rounded NIIG lettering followed by a smiling otter with round glasses.</desc>
+  <defs>
+    <path id="face" d="M29 40 C19 32 9 36 12 49 C13 55 16 61 21 64 C14 78 10 91 11 106 C13 145 44 169 100 169 C156 169 187 145 189 106 C190 91 186 78 179 64 C184 60 187 54 188 48 C190 36 179 32 170 40 C153 22 128 15 100 15 C72 15 46 22 29 40 Z"/>
+    <clipPath id="face-clip"><use xlink:href="#face"/></clipPath>
+  </defs>
+  <g fill="none" stroke="#343434" stroke-width="17" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M44 177 V43 L171 177 V43"/>
+    <path d="M221 43 V177"/>
+    <path d="M270 43 V177"/>
+    <path d="M456 66 C439 48 417 40 389 40 C344 40 316 69 316 110 C316 151 344 180 389 180 C419 180 439 168 453 151 V116 H400"/>
+  </g>
+  <g transform="translate(471 20) scale(1.04 1)">
+    <use xlink:href="#face" fill="#d2b9a5"/>
+    <g clip-path="url(#face-clip)">
+      <path d="M-5 119 C19 100 43 98 70 108 C87 115 113 115 130 108 C157 98 181 100 205 119 V190 H-5 Z" fill="#fffdf9"/>
+      <path d="M49 104 C57 99 67 100 74 105 M126 105 C133 100 143 99 151 104" fill="none" stroke="#bda592" stroke-width="2" stroke-linecap="round" opacity=".65"/>
+    </g>
+    <use xlink:href="#face" fill="none" stroke="#343434" stroke-width="8.5" stroke-linejoin="round"/>
+    <g fill="none" stroke="#343434" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="60" cy="91" r="25"/>
+      <circle cx="140" cy="91" r="25"/>
+      <path d="M85 88 C94 82 106 82 115 88"/>
+      <path d="M35 88 L20 85 M165 88 L180 85"/>
+      <path d="M100 124 V135 M100 135 C92 146 83 148 76 140 M100 135 C108 146 117 148 124 140"/>
+    </g>
+    <circle cx="60" cy="94" r="5.2" fill="#343434"/>
+    <circle cx="140" cy="94" r="5.2" fill="#343434"/>
+    <path d="M82 111 C85 105 93 104 100 105 C107 104 115 105 118 111 C119 120 111 125 100 125 C89 125 81 120 82 111 Z" fill="#343434"/>
+    <g fill="#c88d83" opacity=".75">
+      <circle cx="36" cy="118" r="2.2"/><circle cx="43" cy="121" r="1.8"/><circle cx="48" cy="117" r="1.5"/>
+      <circle cx="164" cy="118" r="2.2"/><circle cx="157" cy="121" r="1.8"/><circle cx="152" cy="117" r="1.5"/>
+    </g>
+  </g>
+</svg>
