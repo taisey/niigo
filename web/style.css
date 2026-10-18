@@ -27,6 +27,9 @@
     .kanban-task-row strong, .kanban-task-row .muted { max-width: 100%; overflow-wrap: anywhere; }
     .kanban-task-row .muted { font-size: .75rem; }
     .subnav { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 18px; }
+    .task-filters { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; margin: 8px 0 16px; }
+    .task-filters label { width: min(240px, 100%); margin: 0; }
+    .task-filter-count { padding-bottom: 9px; }
     .task-list { background: white; border: 1px solid #dce4dd; border-radius: 12px; padding: 4px 16px; }
     .task-row { display: block; border-bottom: 1px solid #edf0ed; padding: 14px 10px; }
     .task-row:last-child { border-bottom: 0; }
@@ -123,6 +126,8 @@
     }
     @media (max-width: 600px) {
       body { padding: 14px; }
+      .task-filters label { width: calc(50% - 6px); }
+      .task-filter-count { width: 100%; padding-bottom: 0; }
       .row, .task-row { align-items: flex-start; flex-direction: column; }
       .group-section > .row { flex-direction: row; }
       .group-section .row-actions { flex-shrink: 0; }
