@@ -25,6 +25,8 @@ function restoreView(): View {
 }
 let data: DataSnapshot = {Tasks: [], Categories: [], Rounds: [], Members: []};
 let view: View = restoreView(), mobileDashboardStatus = 'Todo';
+const taskFilters = {categoryId: '', roundId: ''};
+const unsetFilter = '__unset__';
 let editing: {name: EntityName; item: EditableItem | null; defaults: EditableItem} | null = null;
 let closing: Round | null = null;
 let viewingDetail: {name: EntityName; id: string} | null = null;
@@ -97,6 +99,24 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       const rounds = (task.roundIds || []).map(id => data.Rounds.find(round => round.id === id)?.name).filter(Boolean);
       return '<div class="task-row task-row-clickable" role="button" tabindex="0" data-task-detail="' + esc(task.id) + '"><div class="task-row-heading"><strong>' + esc(task.title) + '</strong><div class="task-actions"><button class="icon-button" aria-label="' + esc(task.title) + 'を編集" title="編集" data-edit="Tasks" data-id="' + esc(task.id) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="icon-button" aria-label="' + esc(task.title) + 'を削除" title="削除" data-delete-task="' + esc(task.id) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></div></div>' + categoryBadges(task) + '<div class="task-details">' + statusBadge(task.status) + '<span>🔄 ラウンド: ' + esc(rounds.join('、') || '未設定') + '</span>' + (task.due_date ? '<span>期限: ' + esc(task.due_date) + '</span>' : '') + (task.assignees ? '<span>👤 担当者: ' + esc(task.assignees) + '</span>' : '') + '</div></div>';
     }
+    function filteredTasks() {
+      return data.Tasks.filter(task =>
+        (!taskFilters.categoryId || (taskFilters.categoryId === unsetFilter
+          ? !task.categoryIds.some(id => data.Categories.some(category => category.id === id))
+          : task.categoryIds.includes(taskFilters.categoryId))) &&
+        (!taskFilters.roundId || (taskFilters.roundId === unsetFilter
+          ? !task.roundIds.some(id => data.Rounds.some(round => round.id === id))
+          : task.roundIds.includes(taskFilters.roundId)))
+      );
+    }
+    function taskFilterSelect(kind: 'category' | 'round') {
+      const isCategory = kind === 'category';
+      const label = isCategory ? 'カテゴリ' : 'ラウンド';
+      const selected = isCategory ? taskFilters.categoryId : taskFilters.roundId;
+      const choices = isCategory ? data.Categories : data.Rounds;
+      return '<label>' + label + '<select data-task-filter="' + kind + '"><option value="">すべての' + label + '</option><option value="' + unsetFilter + '"' + (selected === unsetFilter ? ' selected' : '') + '>' + label + '未設定</option>' +
+        choices.map(item => '<option value="' + esc(item.id) + '"' + (selected === item.id ? ' selected' : '') + '>' + esc(item.name) + '</option>').join('') + '</select></label>';
+    }
     function tasksByCategory(tasks: Task[]) {
       const groups = data.Categories.map(category => ({id: category.id, name: category.name, tasks: tasks.filter(task => task.categoryIds.includes(category.id))})).filter(group => group.tasks.length);
       const uncategorized = tasks.filter(task => !task.categoryIds.some(id => data.Categories.some(category => category.id === id)));
@@ -138,6 +158,8 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
     }
     function render() {
       nav();
+      if (taskFilters.categoryId !== unsetFilter && !data.Categories.some(category => category.id === taskFilters.categoryId)) taskFilters.categoryId = '';
+      if (taskFilters.roundId !== unsetFilter && !data.Rounds.some(round => round.id === taskFilters.roundId)) taskFilters.roundId = '';
       const main = element('main');
       if (view === 'dashboard') {
         const active = data.Rounds.filter(r => r.status === 'Active');
@@ -149,7 +171,10 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
           return '<section class="kanban-column" data-drop-status="' + esc(status) + '"><h3>' + esc(label) + '<span class="count">' + statusTasks.length + '</span></h3><div class="kanban-cards">' + (statusTasks.length ? groupedTaskCards(statusTasks) : '<div class="empty">タスクはありません。</div>') + '</div></section>';
         }).join('') + '</div>' : '<div class="empty">ラウンド管理から進行中のラウンドを設定してください。</div>');
       } else if (view === 'tasks') {
-        main.innerHTML = '<h2>タスク管理</h2><div class="subnav"><button class="active" data-view="tasks">' + listLabels.Tasks + '</button><button data-view="Categories">' + listLabels.Categories + '</button><button data-view="Rounds">' + listLabels.Rounds + '</button><button data-view="Members">' + listLabels.Members + '</button></div><div class="toolbar"><div><div class="task-list-heading"><h3>' + listLabels.Tasks + '</h3><button class="icon-button primary" aria-label="タスクを追加" title="タスクを追加" data-edit="Tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><p class="muted">' + listDescriptions.Tasks + '</p></div></div>' + (data.Tasks.length ? '<div class="task-list">' + data.Tasks.map(taskListRow).join('') + '</div>' : '<div class="empty">タスクはありません。</div>');
+        const tasks = filteredTasks();
+        main.innerHTML = '<h2>タスク管理</h2><div class="subnav"><button class="active" data-view="tasks">' + listLabels.Tasks + '</button><button data-view="Categories">' + listLabels.Categories + '</button><button data-view="Rounds">' + listLabels.Rounds + '</button><button data-view="Members">' + listLabels.Members + '</button></div><div class="toolbar"><div><div class="task-list-heading"><h3>' + listLabels.Tasks + '</h3><button class="icon-button primary" aria-label="タスクを追加" title="タスクを追加" data-edit="Tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><p class="muted">' + listDescriptions.Tasks + '</p></div></div>' +
+          '<div class="task-filters">' + taskFilterSelect('category') + taskFilterSelect('round') + '<span class="muted task-filter-count">' + tasks.length + '件 / 全' + data.Tasks.length + '件</span></div>' +
+          (tasks.length ? '<div class="task-list">' + tasks.map(taskListRow).join('') + '</div>' : '<div class="empty">' + (data.Tasks.length ? '条件に合うタスクはありません。' : 'タスクはありません。') + '</div>');
       } else {
         const name = view;
         main.innerHTML = '<h2>タスク管理</h2><div class="subnav"><button data-view="tasks">' + listLabels.Tasks + '</button><button class="' + (name === 'Categories' ? 'active' : '') + '" data-view="Categories">' + listLabels.Categories + '</button><button class="' + (name === 'Rounds' ? 'active' : '') + '" data-view="Rounds">' + listLabels.Rounds + '</button><button class="' + (name === 'Members' ? 'active' : '') + '" data-view="Members">' + listLabels.Members + '</button></div><div class="toolbar"><div><div class="task-list-heading"><h3>' + listLabels[name] + '</h3><button class="icon-button primary" aria-label="' + labels[name] + 'を追加" title="' + labels[name] + 'を追加" data-edit="' + name + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><p class="muted">' + listDescriptions[name] + '</p></div></div>' +
@@ -323,6 +348,14 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
     });
     document.addEventListener('input', event => {
       if ((event.target as HTMLElement).id === 'assigneeSearch') refreshAssigneePicker();
+    });
+    document.addEventListener('change', event => {
+      const select = (event.target as HTMLElement).closest<HTMLSelectElement>('select[data-task-filter]');
+      if (!select) return;
+      if (select.dataset.taskFilter === 'category') taskFilters.categoryId = select.value;
+      else taskFilters.roundId = select.value;
+      render();
+      document.querySelector<HTMLSelectElement>('select[data-task-filter="' + select.dataset.taskFilter + '"]')?.focus();
     });
     document.addEventListener('pointerdown', event => {
       if (event.pointerType === 'mouse') return;
