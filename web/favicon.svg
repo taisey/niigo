@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">NIIGO favicon</title>
+  <desc id="desc">A smiling otter with round glasses on a white rounded square.</desc>
+  <defs>
+    <path id="face" d="M29 40 C19 32 9 36 12 49 C13 55 16 61 21 64 C14 78 10 91 11 106 C13 145 44 169 100 169 C156 169 187 145 189 106 C190 91 186 78 179 64 C184 60 187 54 188 48 C190 36 179 32 170 40 C153 22 128 15 100 15 C72 15 46 22 29 40 Z"/>
+    <clipPath id="face-clip"><use xlink:href="#face"/></clipPath>
+  </defs>
+  <rect x="2" y="2" width="124" height="124" rx="29" fill="#fff" stroke="#e8e8e8" stroke-width="1.5"/>
+  <g transform="translate(10.96 15) scale(.5304 .51)">
+    <use xlink:href="#face" fill="#d2b9a5"/>
+    <g clip-path="url(#face-clip)">
+      <path d="M-5 119 C19 100 43 98 70 108 C87 115 113 115 130 108 C157 98 181 100 205 119 V190 H-5 Z" fill="#fffdf9"/>
+    </g>
+    <use xlink:href="#face" fill="none" stroke="#343434" stroke-width="8.5" stroke-linejoin="round"/>
+    <g fill="none" stroke="#343434" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="60" cy="91" r="25"/>
+      <circle cx="140" cy="91" r="25"/>
+      <path d="M85 88 C94 82 106 82 115 88"/>
+      <path d="M35 88 L20 85 M165 88 L180 85"/>
+      <path d="M100 124 V135 M100 135 C92 146 83 148 76 140 M100 135 C108 146 117 148 124 140"/>
+    </g>
+    <circle cx="60" cy="94" r="5.6" fill="#343434"/>
+    <circle cx="140" cy="94" r="5.6" fill="#343434"/>
+    <path d="M82 111 C85 105 93 104 100 105 C107 104 115 105 118 111 C119 120 111 125 100 125 C89 125 81 120 82 111 Z" fill="#343434"/>
+    <g fill="#c88d83" opacity=".75">
+      <circle cx="36" cy="118" r="2.8"/><circle cx="44" cy="121" r="2.3"/>
+      <circle cx="164" cy="118" r="2.8"/><circle cx="156" cy="121" r="2.3"/>
+    </g>
+  </g>
+</svg>
