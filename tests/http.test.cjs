@@ -7,7 +7,7 @@ test('serves the compiled TypeScript UI and routes data requests', async () => {
   const server = createApp({
     read: async () => ({Tasks: [], Categories: [], Rounds: [], Members: []}),
     save: async (name, item) => ({name, item}),
-    close: async (roundId, destinations) => ({roundId, destinations}),
+    close: async (roundId, destinations, expected, activateRoundId) => ({roundId, destinations, activateRoundId}),
     deleteTask: async taskId => ({taskId}),
     reorderTask: async (taskId, beforeTaskId, group, groupId, expectedOrder) => ({taskId, beforeTaskId, group, groupId, expectedOrder})
   });
@@ -47,6 +47,7 @@ test('serves the compiled TypeScript UI and routes data requests', async () => {
     assert.deepEqual(await DataService.getData(), {Tasks: [], Categories: [], Rounds: [], Members: []});
     assert.deepEqual(await DataService.saveEntity({requestBody: {name: 'Tasks', item: {title: '掃除', status: 'Todo'}, expected: ''}}), {name: 'Tasks', item: {title: '掃除', status: 'Todo'}});
     assert.deepEqual(await RoundsService.closeRound({requestBody: {roundId: 'round-1', destinations: {}, expected: ''}}), {roundId: 'round-1', destinations: {}});
+    assert.deepEqual(await RoundsService.closeRound({requestBody: {roundId: 'round-1', destinations: {task: 'round-2'}, expected: '', activateRoundId: 'round-2'}}), {roundId: 'round-1', destinations: {task: 'round-2'}, activateRoundId: 'round-2'});
     assert.deepEqual(await TasksService.deleteTask({taskId: 'task-1', requestBody: {expected: ''}}), {taskId: 'task-1'});
     const order = {taskId: 'task-2', beforeTaskId: 'task-1', group: 'Rounds', groupId: 'round-1', expectedOrder: ['task-1', 'task-2']};
     assert.deepEqual(await TasksService.reorderTask({requestBody: order}), order);

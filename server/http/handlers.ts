@@ -22,8 +22,8 @@ export function handlers(store: SheetStore): Record<OperationId, Handler> {
       return store.save(name, item, expected);
     },
     closeRound: async request => {
-      const {roundId, destinations, expected} = await json(request);
-      return store.close(roundId, destinations, expected);
+      const {roundId, destinations, expected, activateRoundId} = await json(request);
+      return store.close(roundId, destinations, expected, activateRoundId);
     },
     deleteTask: async (request, params) => {
       const taskId = params.taskId;
