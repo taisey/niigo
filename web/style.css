@@ -62,6 +62,8 @@
     dialog { border: 1px solid #dce4dd; border-radius: 12px; padding: 24px; width: min(560px, calc(100vw - 48px)); max-height: 85vh; overflow: auto; }
     dialog::backdrop { background: #17261db8; }
     label { display: grid; gap: 4px; margin: 10px 0; font-size: .9rem; }
+    .switch-task { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .switch-task input { width: auto; margin: 0; }
     input, textarea, select { width: 100%; box-sizing: border-box; padding: 9px; border: 1px solid #aabbb0; border-radius: 7px; font: inherit; }
     select[multiple] { min-height: 110px; }
     .assignee-picker { border: 1px solid #aabbb0; border-radius: 7px; padding: 8px 12px 12px; margin: 10px 0; min-width: 0; }

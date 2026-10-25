@@ -47,6 +47,8 @@ paths:
       description: |
         対象ラウンドの未完了タスクをすべて destinations に含める。
         移動先は終了していない別のラウンドの ID、またはラウンドから外す場合は空文字列。
+        activateRoundId を指定すると、進行中のラウンドを終了し、指定した計画中のラウンドを進行中にする。
+        この場合、未完了タスクの移動先は切り替え先のラウンド ID または空文字列に限る。
         expected には、取得したラウンドを JSON.stringify した文字列を指定する。
       requestBody:
         required: true
@@ -236,6 +238,7 @@ components:
           description: 未完了タスクの ID をキー、移動先ラウンドの ID または空文字列を値にする。
           additionalProperties: { type: string }
         expected: { type: string, description: 取得したラウンドを JSON.stringify した文字列。 }
+        activateRoundId: { type: string, description: 切り替え先の計画中ラウンドの ID。通常の終了では省略する。 }
     DeleteTaskRequest:
       type: object
       required: [expected]

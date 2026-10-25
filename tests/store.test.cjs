@@ -164,6 +164,34 @@ test('closing a round moves pending tasks and retains completed tasks', async ()
   assert.equal(rows.Rounds[1][0], 'Closed');
 });
 
+test('switches the active round and carries over selected pending tasks', async () => {
+  const {SheetStore} = await import('../dist/server/sheets/store.js');
+  const {rows, gateway} = fixture();
+  rows.Tasks.push(['', 'Sprint 1', 't3', '買い物', '', '', 'In Progress', '', '', '', '', 'r1']);
+  const store = new SheetStore(gateway);
+  const round = (await store.read()).Rounds[0];
+  await store.close('r1', {t1: 'r2', t3: ''}, JSON.stringify(round), 'r2');
+  assert.equal(rows.Rounds[1][0], 'Closed');
+  assert.equal(rows.Rounds[2][0], 'Active');
+  assert.equal(rows.Tasks[1][1], 'Sprint 2');
+  assert.equal(rows.Tasks[1][11], 'r2');
+  assert.equal(rows.Tasks[1][4], '2026-10-20');
+  assert.equal(rows.Tasks[2][11], 'r1');
+  assert.equal(rows.Tasks[3][11], '');
+});
+
+test('rejects invalid round switches before writing', async () => {
+  const {SheetStore} = await import('../dist/server/sheets/store.js');
+  const {rows, writes, gateway} = fixture();
+  const store = new SheetStore(gateway);
+  const round = (await store.read()).Rounds[0];
+  await assert.rejects(store.close('r1', {t1: 'r1'}, JSON.stringify(round), 'r2'), /引き継ぎ先/);
+  await assert.rejects(store.close('r1', {}, JSON.stringify(round), 'r2'), /全ての未完了タスク/);
+  rows.Rounds[2][0] = 'Closed';
+  await assert.rejects(store.close('r1', {t1: 'r2'}, JSON.stringify(round), 'r2'), /計画中/);
+  assert.equal(writes.length, 0);
+});
+
 test('duplicate header stops writes before reaching Sheets', async () => {
   const {SheetStore} = await import('../dist/server/sheets/store.js');
   const {rows, gateway} = fixture();

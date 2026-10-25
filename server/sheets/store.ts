@@ -246,23 +246,29 @@ export class SheetStore {
       return this.read();
     });
   }
-  async close(roundId: string, destinations: Record<string, string>, expected: string): Promise<DataSnapshot> {
+  async close(roundId: string, destinations: Record<string, string>, expected: string, activateRoundId = ''): Promise<DataSnapshot> {
     return this.#exclusive(async () => {
       const {sheets, data} = parseSnapshot(await this.gateway.read());
       const round = data.Rounds.find(item => item.id === roundId);
       if (!round || round.status === 'Closed') throw new Error('終了できるラウンドがありません。');
       if (JSON.stringify(round) !== expected) throw new Error('ラウンドが変更されました。再読み込みしてください。');
+      const nextRound = activateRoundId ? data.Rounds.find(item => item.id === activateRoundId) : null;
+      if (activateRoundId && (round.status !== 'Active' || nextRound?.status !== 'Planned')) {
+        throw new Error('切り替え先には計画中のラウンドを選んでください。');
+      }
       const pending = sheets.Tasks.rows.filter(task => task.roundIds.includes(roundId) && task.status !== 'Done');
       const requests = [];
       for (const task of pending) {
         if (!Object.hasOwn(destinations, task.id)) throw new Error('全ての未完了タスクの移動先を選んでください。');
         const dest = destinations[task.id];
+        if (nextRound && dest !== '' && dest !== nextRound.id) throw new Error('引き継ぎ先のラウンドが不正です。');
         if (dest && (!data.Rounds.some(item => item.id === dest && item.status !== 'Closed') || dest === roundId)) throw new Error('移動先のラウンドが不正です。');
         const label = dest ? data.Rounds.find(item => item.id === dest)!.name : '';
         requests.push(writeCell(sheets.Tasks, task._row, 'round', label, ''));
         requests.push(writeCell(sheets.Tasks, task._row, 'roundId', dest || ''));
       }
       requests.push(writeCell(sheets.Rounds, rowFor(sheets.Rounds, roundId), 'status', 'Closed'));
+      if (nextRound) requests.push(writeCell(sheets.Rounds, rowFor(sheets.Rounds, nextRound.id), 'status', 'Active'));
       await this.gateway.write(requests);
       return this.read();
     });

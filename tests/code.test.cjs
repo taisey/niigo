@@ -96,6 +96,18 @@ test('round close moves pending tasks and keeps completed tasks and due dates', 
   assert.equal(sheets.Rounds.rows[1][0], 'Closed');
 });
 
+test('round switch activates the next round and carries over selected tasks', () => {
+  const {context, sheets} = fixture();
+  sheets.Tasks.rows.push(['', 'Sprint 1', 't3', '買い物', '', '', 'Todo', '', '', '', '', 'r1']);
+  const round = context.getData().Rounds[0];
+  context.closeRound('r1', {t1: 'r2', t3: ''}, JSON.stringify(round), 'r2');
+  assert.equal(sheets.Rounds.rows[1][0], 'Closed');
+  assert.equal(sheets.Rounds.rows[2][0], 'Active');
+  assert.equal(sheets.Tasks.rows[1][11], 'r2');
+  assert.equal(sheets.Tasks.rows[2][11], 'r1');
+  assert.equal(sheets.Tasks.rows[3][11], '');
+});
+
 test('duplicate header stops writes with a useful error', () => {
   const {context, sheets} = fixture();
   sheets.Tasks.rows[0][0] = 'title';

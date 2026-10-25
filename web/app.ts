@@ -29,6 +29,7 @@ const taskFilters = {categoryId: '', roundId: ''};
 const unsetFilter = '__unset__';
 let editing: {name: EntityName; item: EditableItem | null; defaults: EditableItem} | null = null;
 let closing: Round | null = null;
+let switchingTo: Round | null = null;
 let viewingDetail: {name: EntityName; id: string} | null = null;
 let viewingTaskId: string | null = null, draggedTaskId: string | null = null;
 let draggedGroup: {id: string; taskId: string} | null = null;
@@ -54,7 +55,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
     const operations: Record<string, (...args: any[]) => PromiseLike<DataSnapshot>> = {
       getData: () => DataService.getData(),
       saveEntity: (name: EntityName, item: EditableItem, expected: string) => DataService.saveEntity({requestBody: {name, item, expected} as SaveRequest}),
-      closeRound: (roundId: string, destinations: Record<string, string>, expected: string) => RoundsService.closeRound({requestBody: {roundId, destinations, expected}}),
+      closeRound: (roundId: string, destinations: Record<string, string>, expected: string, activateRoundId?: string) => RoundsService.closeRound({requestBody: {roundId, destinations, expected, activateRoundId}}),
       deleteTask: (taskId: string, expected: string) => TasksService.deleteTask({taskId, requestBody: {expected}}),
       reorderTask: (taskId: string, beforeTaskId: string, groupId: string, expectedOrder: string[]) => TasksService.reorderTask({requestBody: {taskId, beforeTaskId, group: 'Categories', groupId, expectedOrder} as ReorderRequest})
     };
@@ -64,12 +65,12 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       } catch (caught) {
         if (caught instanceof ApiError && caught.status === 409) {
           try {
-            const latest = await DataService.getData();
-            error('');
-            return latest;
+            data = await DataService.getData();
+            render();
           } catch {
             throw new Error('シートの最新データを読み込めませんでした。');
           }
+          throw new Error('シートが変更されました。画面を閉じて、最新の内容でやり直してください。');
         }
         if (caught instanceof ApiError) throw new Error(caught.body?.error || caught.message);
         throw caught;
@@ -190,7 +191,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
             const description = 'description' in item ? item.description : '';
             const rowActions = name === 'Categories'
               ? '<div class="row-actions"><button class="icon-button" aria-label="' + esc(item.name) + 'を編集" title="編集" data-edit="Categories" data-id="' + esc(item.id) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button><button class="icon-button" aria-label="' + esc(item.name) + 'にタスクを追加" title="タスクに追加" data-add-task-category="' + esc(item.id) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>'
-              : '<div><button data-edit="' + name + '" data-id="' + esc(item.id) + '">編集</button> ' + (name === 'Rounds' && itemStatus !== 'Closed' ? '<button data-close="' + esc(item.id) + '">終了</button>' : '') + '</div>';
+              : '<div><button data-edit="' + name + '" data-id="' + esc(item.id) + '">編集</button> ' + (name === 'Rounds' && itemStatus === 'Planned' && data.Rounds.some(round => round.status === 'Active') ? '<button data-switch-round="' + esc(item.id) + '">切り替える</button> ' : '') + (name === 'Rounds' && itemStatus !== 'Closed' ? '<button data-close="' + esc(item.id) + '">終了</button>' : '') + '</div>';
             const content = title + (description ? '<div class="muted">' + esc(description) + '</div>' : '');
             const key = name + ':' + item.id;
             const main = grouped
@@ -326,11 +327,26 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       finally { saving = false; if (submitButton) { submitButton.disabled = false; submitButton.textContent = '保存'; } }
     });
     function openClose(id: string) {
+      switchingTo = null;
       closing = data.Rounds.find(r => r.id === id) ?? null;
       if (!closing) return;
+      element('closeTitle').textContent = 'ラウンドを終了';
+      element('closeDescription').textContent = '未完了のタスクごとに移動先を選んでください。完了したタスクはこのラウンドに残ります。';
+      element('closeSubmit').textContent = '終了する';
       const tasks = data.Tasks.filter(t => t.roundIds.includes(id) && t.status !== 'Done');
       const choices = data.Rounds.filter(r => r.id !== id && r.status !== 'Closed');
       element('closeFields').innerHTML = tasks.length ? tasks.map(t => '<label>' + esc(t.title) + '<select data-task="' + esc(t.id) + '"><option value="">タスク一覧（ラウンドなし）</option>' + choices.map(r => '<option value="' + esc(r.id) + '">' + esc(r.name) + '</option>').join('') + '</select></label>').join('') : '<p>移動するタスクはありません。</p>';
+      closer.showModal();
+    }
+    function openSwitch(id: string) {
+      switchingTo = data.Rounds.find(round => round.id === id && round.status === 'Planned') ?? null;
+      closing = data.Rounds.find(round => round.status === 'Active') ?? null;
+      if (!switchingTo || !closing) return;
+      element('closeTitle').textContent = 'ラウンドを切り替える';
+      element('closeDescription').textContent = '「' + closing.name + '」を終了し、「' + switchingTo.name + '」を進行中にします。引き継がない未完了タスクはラウンド未設定になり、完了したタスクは元のラウンドに残ります。';
+      element('closeSubmit').textContent = '切り替える';
+      const tasks = data.Tasks.filter(task => task.roundIds.includes(closing!.id) && task.status !== 'Done');
+      element('closeFields').innerHTML = tasks.length ? tasks.map(task => '<label class="switch-task"><input type="checkbox" data-task="' + esc(task.id) + '" checked> ' + esc(task.title) + '</label>').join('') : '<p>引き継ぐ未完了タスクはありません。</p>';
       closer.showModal();
     }
     element('closeForm').addEventListener('submit', async e => {
@@ -338,8 +354,12 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       const currentClosing = closing;
       if (!currentClosing) return;
       const destinations: Record<string, string> = {};
-      document.querySelectorAll<HTMLSelectElement>('#closeFields select').forEach(select => { if (select.dataset.task) destinations[select.dataset.task] = select.value; });
-      try { data = await call('closeRound', currentClosing.id, destinations, JSON.stringify(currentClosing)); closer.close(); error(''); render(); } catch (err) { error(errorMessage(err)); }
+      if (switchingTo) {
+        document.querySelectorAll<HTMLInputElement>('#closeFields input[data-task]').forEach(input => { destinations[input.dataset.task!] = input.checked ? switchingTo!.id : ''; });
+      } else {
+        document.querySelectorAll<HTMLSelectElement>('#closeFields select').forEach(select => { if (select.dataset.task) destinations[select.dataset.task] = select.value; });
+      }
+      try { data = await call('closeRound', currentClosing.id, destinations, JSON.stringify(currentClosing), switchingTo?.id); closer.close(); error(''); render(); } catch (err) { error(errorMessage(err)); }
     });
     element('reload').addEventListener('click', load);
     element('editTaskFromDetail').addEventListener('click', () => {
@@ -456,7 +476,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       catch (err) { error(errorMessage(err)); }
     });
     document.addEventListener('click', event => {
-      const button = (event.target as HTMLElement).closest<HTMLElement>('[data-view], [data-edit], [data-close], [data-dismiss], [data-add-task-category], [data-delete-task], [data-add-assignee], [data-remove-assignee], [data-task-detail], [data-toggle-group], [data-mobile-status], [data-save-task-status]');
+      const button = (event.target as HTMLElement).closest<HTMLElement>('[data-view], [data-edit], [data-close], [data-switch-round], [data-dismiss], [data-add-task-category], [data-delete-task], [data-add-assignee], [data-remove-assignee], [data-task-detail], [data-toggle-group], [data-mobile-status], [data-save-task-status]');
       if (!button) return;
       if (button.dataset.addAssignee) {
         editingAssigneeIds.add(button.dataset.addAssignee);
@@ -486,6 +506,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       }
       else if (button.dataset.edit) openEditor(button.dataset.edit as EntityName, button.dataset.id || null);
       else if (button.dataset.close) openClose(button.dataset.close);
+      else if (button.dataset.switchRound) openSwitch(button.dataset.switchRound);
       else if (button.dataset.dismiss) (element(button.dataset.dismiss) as HTMLDialogElement).close();
     });
     document.addEventListener('keydown', event => {
