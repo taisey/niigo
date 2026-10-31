@@ -25,7 +25,8 @@ function restoreView(): View {
 }
 let data: DataSnapshot = {Tasks: [], Categories: [], Rounds: [], Members: []};
 let view: View = restoreView(), mobileDashboardStatus = 'Todo';
-const taskFilters = {categoryId: '', roundId: ''};
+let dashboardAssigneeId = '';
+const taskFilters = {categoryId: '', roundId: '', status: ''};
 const unsetFilter = '__unset__';
 let editing: {name: EntityName; item: EditableItem | null; defaults: EditableItem} | null = null;
 let closing: Round | null = null;
@@ -107,8 +108,14 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
           : task.categoryIds.includes(taskFilters.categoryId))) &&
         (!taskFilters.roundId || (taskFilters.roundId === unsetFilter
           ? !task.roundIds.some(id => data.Rounds.some(round => round.id === id))
-          : task.roundIds.includes(taskFilters.roundId)))
+          : task.roundIds.includes(taskFilters.roundId))) &&
+        (!taskFilters.status || task.status === taskFilters.status)
       );
+    }
+    function statusFilterSelect(label = 'ステータス') {
+      return '<label>' + label + '<select data-task-filter="status"><option value="">すべてのステータス</option>' +
+        Object.entries(taskStatus).map(([status, label]) => '<option value="' + status + '"' + (taskFilters.status === status ? ' selected' : '') + '>' + label + '</option>').join('') +
+        '</select></label>';
     }
     function taskFilterSelect(kind: 'category' | 'round') {
       const isCategory = kind === 'category';
@@ -162,29 +169,42 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       nav();
       if (taskFilters.categoryId !== unsetFilter && !data.Categories.some(category => category.id === taskFilters.categoryId)) taskFilters.categoryId = '';
       if (taskFilters.roundId !== unsetFilter && !data.Rounds.some(round => round.id === taskFilters.roundId)) taskFilters.roundId = '';
+      if (dashboardAssigneeId !== unsetFilter && !data.Members.some(member => member.id === dashboardAssigneeId)) dashboardAssigneeId = '';
       const main = element('main');
       if (view === 'dashboard') {
         const active = data.Rounds.filter(r => r.status === 'Active');
-        const tasks = data.Tasks.filter(task => active.some(round => task.roundIds.includes(round.id)));
+        const activeTasks = data.Tasks.filter(task => active.some(round => task.roundIds.includes(round.id)));
+        const tasks = activeTasks.filter(task => !dashboardAssigneeId || (dashboardAssigneeId === unsetFilter
+          ? !task.assigneesIds.some(id => data.Members.some(member => member.id === id))
+          : task.assigneesIds.includes(dashboardAssigneeId)));
         const heading = active.length ? '🔄 ラウンド: ' + active.map(round => round.name).join('、') : '進行中のラウンドはありません';
         const mobileTasks = tasks.filter(task => task.status === mobileDashboardStatus);
-        main.innerHTML = '<div class="toolbar"><div><h2>ダッシュボード</h2><p class="muted">' + esc(heading) + '</p><p class="muted dashboard-desktop-hint">タスクをドラッグしてステータスを変更できます。</p></div></div>' + (active.length ? '<div class="mobile-status-tabs">' + Object.entries(taskStatus).map(([status, label]) => '<button class="' + (mobileDashboardStatus === status ? 'active' : '') + '" data-mobile-status="' + status + '">' + label + '</button>').join('') + '</div><section class="mobile-dashboard-column"><h3>' + esc(taskStatus[mobileDashboardStatus]) + '<span class="count">' + mobileTasks.length + '</span></h3><div class="kanban-cards">' + (mobileTasks.length ? groupedTaskCards(mobileTasks) : '<div class="empty">タスクはありません。</div>') + '</div></section><div class="kanban">' + Object.entries(taskStatus).map(([status, label]) => {
+        main.innerHTML = '<div class="toolbar"><div><h2>ダッシュボード</h2><p class="muted">' + esc(heading) + '</p><p class="muted dashboard-desktop-hint">タスクをドラッグしてステータスを変更できます。</p></div></div>' +
+          '<div class="task-filters"><label>担当者<select data-dashboard-assignee-filter><option value="">すべての担当者</option>' +
+          data.Members.map(member => '<option value="' + esc(member.id) + '"' + (dashboardAssigneeId === member.id ? ' selected' : '') + '>' + esc(member.name) + '</option>').join('') +
+          '<option value="' + unsetFilter + '"' + (dashboardAssigneeId === unsetFilter ? ' selected' : '') + '>未設定</option></select></label>' +
+          (active.length ? '<span class="muted task-filter-count">' + tasks.length + '件 / 全' + activeTasks.length + '件</span>' : '') + '</div>' +
+          (active.length ? '<div class="mobile-status-tabs">' + Object.entries(taskStatus).map(([status, label]) => '<button class="' + (mobileDashboardStatus === status ? 'active' : '') + '" data-mobile-status="' + status + '">' + label + '</button>').join('') + '</div><section class="mobile-dashboard-column"><h3>' + esc(taskStatus[mobileDashboardStatus]) + '<span class="count">' + mobileTasks.length + '</span></h3><div class="kanban-cards">' + (mobileTasks.length ? groupedTaskCards(mobileTasks) : '<div class="empty">タスクはありません。</div>') + '</div></section><div class="kanban">' + Object.entries(taskStatus).map(([status, label]) => {
           const statusTasks = tasks.filter(task => task.status === status);
           return '<section class="kanban-column" data-drop-status="' + esc(status) + '"><h3>' + esc(label) + '<span class="count">' + statusTasks.length + '</span></h3><div class="kanban-cards">' + (statusTasks.length ? groupedTaskCards(statusTasks) : '<div class="empty">タスクはありません。</div>') + '</div></section>';
         }).join('') + '</div>' : '<div class="empty">ラウンド管理から進行中のラウンドを設定してください。</div>');
       } else if (view === 'tasks') {
         const tasks = filteredTasks();
         main.innerHTML = '<h2>タスク管理</h2><div class="subnav"><button class="active" data-view="tasks">' + listLabels.Tasks + '</button><button data-view="Categories">' + listLabels.Categories + '</button><button data-view="Rounds">' + listLabels.Rounds + '</button><button data-view="Members">' + listLabels.Members + '</button></div><div class="toolbar"><div><div class="task-list-heading"><h3>' + listLabels.Tasks + '</h3><button class="icon-button primary" aria-label="タスクを追加" title="タスクを追加" data-edit="Tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><p class="muted">' + listDescriptions.Tasks + '</p></div></div>' +
-          '<div class="task-filters">' + taskFilterSelect('category') + taskFilterSelect('round') + '<span class="muted task-filter-count">' + tasks.length + '件 / 全' + data.Tasks.length + '件</span></div>' +
+          '<div class="task-filters">' + taskFilterSelect('category') + taskFilterSelect('round') + statusFilterSelect() + '<span class="muted task-filter-count">' + tasks.length + '件 / 全' + data.Tasks.length + '件</span></div>' +
           (tasks.length ? '<div class="task-list">' + tasks.map(taskListRow).join('') + '</div>' : '<div class="empty">' + (data.Tasks.length ? '条件に合うタスクはありません。' : 'タスクはありません。') + '</div>');
       } else {
         const name = view;
+        const items = name === 'Categories' && taskFilters.status
+          ? data.Categories.filter(category => data.Tasks.some(task => task.categoryIds.includes(category.id) && task.status === taskFilters.status))
+          : data[name];
         main.innerHTML = '<h2>タスク管理</h2><div class="subnav"><button data-view="tasks">' + listLabels.Tasks + '</button><button class="' + (name === 'Categories' ? 'active' : '') + '" data-view="Categories">' + listLabels.Categories + '</button><button class="' + (name === 'Rounds' ? 'active' : '') + '" data-view="Rounds">' + listLabels.Rounds + '</button><button class="' + (name === 'Members' ? 'active' : '') + '" data-view="Members">' + listLabels.Members + '</button></div><div class="toolbar"><div><div class="task-list-heading"><h3>' + listLabels[name] + '</h3><button class="icon-button primary" aria-label="' + labels[name] + 'を追加" title="' + labels[name] + 'を追加" data-edit="' + name + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div><p class="muted">' + listDescriptions[name] + '</p></div></div>' +
-          (data[name].length ? '<div class="panel">' + data[name].map(item => {
+          (name === 'Categories' ? '<div class="task-filters">' + statusFilterSelect('タスクのステータス') + '<span class="muted task-filter-count">' + items.length + '件 / 全' + data.Categories.length + '件</span></div>' : '') +
+          (items.length ? '<div class="panel">' + items.map(item => {
             const grouped = name === 'Categories' || name === 'Rounds';
-            const groupTasks = grouped ? data.Tasks.filter(task => (name === 'Categories' ? task.categoryIds : task.roundIds).includes(item.id)) : [];
+            const groupTasks = grouped ? data.Tasks.filter(task => (name === 'Categories' ? task.categoryIds : task.roundIds).includes(item.id) && (name !== 'Categories' || !taskFilters.status || task.status === taskFilters.status)) : [];
             const categoryTitle = name === 'Categories' ? '<div class="category-title"><span class="folder-icon" aria-hidden="true">📁</span><strong>' + esc(item.name) + '</strong><span class="category-count">' + groupTasks.length + '件</span></div>' : '';
-            const itemStatus = 'status' in item ? item.status : '';
+            const itemStatus = 'status' in item ? String(item.status || '') : '';
             const title = name === 'Categories' ? categoryTitle : name === 'Rounds'
               ? '<div class="category-title"><strong>' + esc(item.name) + '</strong><span class="category-count">' + groupTasks.length + '件</span><span class="muted">' + esc(roundStatus[itemStatus] || itemStatus) + '</span></div>'
               : '<strong>' + esc(item.name) + '</strong>';
@@ -198,7 +218,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
               ? '<button type="button" class="group-toggle row-main" data-toggle-group="' + name + '" data-group-id="' + esc(item.id) + '" aria-expanded="' + expandedGroups.has(key) + '" aria-controls="group-tasks-' + esc(key) + '"><span class="group-chevron" aria-hidden="true">⌄</span><div class="group-toggle-content">' + content + '</div></button>'
               : '<div class="row-main">' + content + '</div>';
             return '<section class="group-section"><div class="row">' + main + rowActions + '</div>' + (name === 'Categories' || name === 'Rounds' ? groupTaskList(name, item.id, groupTasks) : '') + '</section>';
-          }).join('') + '</div>' : '<div class="empty">まだありません。</div>');
+          }).join('') + '</div>' : '<div class="empty">' + (name === 'Categories' && data.Categories.length ? '条件に合うカテゴリはありません。' : 'まだありません。') + '</div>');
       }
     }
     function categoryBadges(task: Task) {
@@ -374,10 +394,18 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       if ((event.target as HTMLElement).id === 'assigneeSearch') refreshAssigneePicker();
     });
     document.addEventListener('change', event => {
+      const dashboardSelect = (event.target as HTMLElement).closest<HTMLSelectElement>('select[data-dashboard-assignee-filter]');
+      if (dashboardSelect) {
+        dashboardAssigneeId = dashboardSelect.value;
+        render();
+        document.querySelector<HTMLSelectElement>('select[data-dashboard-assignee-filter]')?.focus();
+        return;
+      }
       const select = (event.target as HTMLElement).closest<HTMLSelectElement>('select[data-task-filter]');
       if (!select) return;
       if (select.dataset.taskFilter === 'category') taskFilters.categoryId = select.value;
-      else taskFilters.roundId = select.value;
+      else if (select.dataset.taskFilter === 'round') taskFilters.roundId = select.value;
+      else taskFilters.status = select.value;
       render();
       document.querySelector<HTMLSelectElement>('select[data-task-filter="' + select.dataset.taskFilter + '"]')?.focus();
     });
