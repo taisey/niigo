@@ -4,9 +4,9 @@
 
 ## 構成
 
-- `web/app.ts` は画面の TypeScript ソースです。シートの列位置やセルのメモを意識せず、Task、Round などのデータとして扱います。
+- `ui/src/` に React の画面とコンポーネントを配置しています。画面はシートの列位置やセルのメモを意識せず、Task、Round などのデータとして扱います。
 - `server/main.ts` は Web サーバーの入口です。`server/http/` は API と画面の配信、`server/sheets/` は Google Sheets の読み書きを担当します。画面から Google の認証情報を扱いません。
-- Web API の I/F は [OpenAPI 定義](server/spec/openapi.yaml)に記載しています。`npm run generate:api` は画面用の API クライアントを `web/api-generated/` に、サーバー用のルーターを `server/http/generated-routes.ts` に生成します。処理本体は `server/http/handlers.ts` に記述します。生成物は Git 管理せず、`npm run build` で生成してから画面とサーバーを `dist/` へコンパイルします。`npm run dev` と `npm start` は起動前にビルドします。
+- Web API の I/F は [OpenAPI 定義](server/spec/openapi.yaml)に記載しています。`npm run generate:api` は画面用の API クライアントを `ui/api-generated/` に、サーバー用のルーターを `server/http/generated-routes.ts` に生成します。処理本体は `server/http/handlers.ts` に記述します。生成物は Git 管理せず、`npm run build` で API クライアントを生成し、Vite で画面を `dist/ui/` にビルドしてからサーバーを `dist/` へコンパイルします。`npm run dev` と `npm start` は起動前にビルドします。
 - `gas/static/` はシートのメニューと動的ソース呼び出しを担当します。`gas/dynamic/` は Drive から読み込む処理本体です。どちらも Git 管理します。
 - `scripts/` はローカルの `clasp` で固定コードを反映します。`gas/deploy/` はサービスアカウントで動的コードを反映し、必要なシートの列を移行します。`gas/.clasp-build/` は `clasp` 用の生成物です。
 
@@ -48,7 +48,7 @@ NIIGO はスプレッドシートの `Tasks`、`Categories`、`Rounds`、`Member
 
 編集トリガーは Sheets の通常のセル編集で動作します。外部 API や別のスクリプトによる変更では動作しないため、その経路で行を追加した場合は ID と参照先 ID 列を別途整える必要があります。複数セルを同時に貼り付けてラウンドを `Closed` にする操作では、終了時の移動先選択を行えません。
 
-タスク一覧の検索、並べ替え、絞り込みは実装していません。Sheets の変更と Web 画面からの保存が同時に起きた場合、保存直前の再読込後の変更までは検出できません。
+タスク一覧の検索と並べ替えは実装していません。カテゴリ、ラウンド、ステータスで絞り込めます。Sheets の変更と Web 画面からの保存が同時に起きた場合、保存直前の再読込後の変更までは検出できません。
 
 `npm test` で保存処理を検証できます。GitHub Actions では PR と `main` への push 時に同じテストを実行します。
 

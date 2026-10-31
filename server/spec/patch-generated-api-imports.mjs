@@ -9,7 +9,7 @@ async function sources(directory) {
   }))).flat();
 }
 
-for (const path of await sources('web/api-generated')) {
+for (const path of await sources('ui/api-generated')) {
   const original = await readFile(path, 'utf8');
   const patched = original.replace(/(from ['"]\.{1,2}\/[A-Za-z0-9_/-]+)(['"])/g, '$1.js$2').replace(/\n+$/, '\n');
   if (patched !== original) await writeFile(path, patched);
