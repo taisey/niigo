@@ -214,7 +214,9 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
       viewingTaskId = id;
       const categories = data.Categories.filter(item => (task.categoryIds || []).includes(item.id)).map(item => item.name);
       const rounds = data.Rounds.filter(item => (task.roundIds || []).includes(item.id)).map(item => item.name);
-      element('taskDetailContent').innerHTML = '<h2>' + esc(task.title) + '</h2><dl class="task-detail-list">' +
+      element('taskDetailTitle').textContent = task.title;
+      element('editTaskFromDetail').setAttribute('aria-label', task.title + 'を編集');
+      element('taskDetailContent').innerHTML = '<dl class="task-detail-list">' +
         '<dt>ステータス</dt><dd>' + statusBadge(task.status) + '</dd>' +
         '<dt>👤 担当者</dt><dd>' + esc(task.assignees || '未設定') + '</dd>' +
         '<dt>カテゴリ</dt><dd>' + esc(categories.join('、') || '未設定') + '</dd>' +
@@ -223,6 +225,7 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
         '<dt>詳細</dt><dd class="task-detail-description">' + linkify(task.description || '詳細はありません。') + '</dd></dl>' +
         '<div class="mobile-status-editor"><label>ステータス<select id="detailTaskStatus">' + Object.entries(taskStatus).map(([status, label]) => '<option value="' + status + '" ' + (task.status === status ? 'selected' : '') + '>' + label + '</option>').join('') + '</select></label><button type="button" class="primary" data-save-task-status="' + esc(task.id) + '">ステータスを保存</button></div>';
       if (!taskDetail.open) taskDetail.showModal();
+      taskDetail.scrollTop = 0;
     }
     async function saveTaskStatus(id: string) {
       const task = data.Tasks.find(item => item.id === id);

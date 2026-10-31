@@ -12,7 +12,7 @@
   <div id="error" role="alert"></div>
   <nav id="nav"></nav>
   <main id="main" aria-live="polite">読み込み中…</main>
-  <dialog id="taskDetail"><div id="taskDetailContent"></div><div class="actions"><button type="button" data-dismiss="taskDetail">閉じる</button><button type="button" class="primary" id="editTaskFromDetail">編集</button></div></dialog>
+  <dialog id="taskDetail"><div class="task-detail-header"><h2 id="taskDetailTitle"></h2><button type="button" class="icon-button" id="editTaskFromDetail" aria-label="タスクを編集" title="編集"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button></div><div id="taskDetailContent"></div><div class="actions"><button type="button" data-dismiss="taskDetail">閉じる</button></div></dialog>
   <dialog id="editor"><form id="editForm"><h2 id="editorTitle"></h2><div id="fields"></div><div class="actions"><button type="button" id="deleteTask" class="danger" hidden>削除</button><button type="button" data-dismiss="editor">キャンセル</button><button class="primary">保存</button></div></form></dialog>
   <dialog id="closer"><form id="closeForm"><h2>ラウンドを終了</h2><p>未完了のタスクごとに移動先を選んでください。完了したタスクはこのラウンドに残ります。</p><div id="closeFields"></div><div class="actions"><button type="button" data-dismiss="closer">キャンセル</button><button class="primary">終了する</button></div></form></dialog>
   <script type="module" src="/app.js"></script>
