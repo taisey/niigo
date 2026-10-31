@@ -1,11 +1,14 @@
 {
   "name": "niigo",
   "private": true,
+  "workspaces": [
+    "ui"
+  ],
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "generate:api": "openapi --input server/spec/openapi.yaml --output web/api-generated --client fetch --useOptions && node server/spec/patch-generated-api-imports.mjs && node server/spec/generate-server-router.mjs",
-    "build": "npm run generate:api && tsc -p tsconfig.json",
+    "generate:api": "openapi --input server/spec/openapi.yaml --output ui/api-generated --client fetch --useOptions && node server/spec/patch-generated-api-imports.mjs && node server/spec/generate-server-router.mjs",
+    "build": "npm run generate:api && tsc -p ui/tsconfig.json && vite build --config ui/vite.config.ts && tsc -p tsconfig.json",
     "prestart": "npm run build",
     "predev": "npm run build",
     "start": "node --env-file-if-exists=.env dist/server/main.js",
@@ -22,9 +25,15 @@
   },
   "devDependencies": {
     "@google/clasp": "^3.4.1",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
     "js-yaml": "^4.3.2",
     "openapi-typescript-codegen": "^0.29.0",
-    "typescript": "^5.8.3"
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.8.3",
+    "vite": "^8.3.5"
   }
 }

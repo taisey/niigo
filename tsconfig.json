@@ -8,10 +8,10 @@
     "rootDir": ".",
     "outDir": "dist",
     "baseUrl": ".",
-    "paths": {"/api-client/*": ["web/api-generated/*"]},
+    "paths": {"/api-client/*": ["ui/api-generated/*"]},
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["server/**/*.ts", "web/**/*.ts", "gas/deploy/**/*.ts"],
+  "include": ["server/**/*.ts", "ui/api-generated/**/*.ts", "gas/deploy/**/*.ts"],
   "exclude": ["dist", "node_modules"]
 }

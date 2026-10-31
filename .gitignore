@@ -4,5 +4,5 @@ node_modules/
 *.swp
 gas/.clasp-build/
 dist/
-web/api-generated/
+ui/api-generated/
 server/http/generated-routes.ts
