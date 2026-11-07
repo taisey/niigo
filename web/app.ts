@@ -227,8 +227,8 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
         const member = data.Members.find(item => item.id === id);
         return member ? '<span class="assignee-chip">' + esc(member.name) + '<button type="button" aria-label="' + esc(member.name) + 'を担当から外す" data-remove-assignee="' + esc(id) + '">×</button></span>' : '';
       }).join('') || '<span class="muted">担当者未設定</span>';
-      const input = element('assigneeSearch') as HTMLInputElement | null;
-      const matches = element('assigneeMatches');
+      const input = document.getElementById('assigneeSearch') as HTMLInputElement | null;
+      const matches = document.getElementById('assigneeMatches');
       if (!input || !matches) return;
       const query = input.value.trim().toLocaleLowerCase();
       matches.innerHTML = query
@@ -250,7 +250,11 @@ const taskDetail = element('taskDetail') as HTMLDialogElement;
         html += '<label>ステータス<select name="status">' + Object.entries(taskStatus).map(([key, label]) => '<option value="' + key + '" ' + ((item.status || 'Todo') === key ? 'selected' : '') + '>' + label + '</option>').join('') + '</select></label>';
         html += assigneePicker(item.assigneesIds);
         html += select('カテゴリ', data.Categories, item.categoryIds).replace('name="カテゴリ"', 'name="categoryIds"');
-        html += select('ラウンド', data.Rounds.filter(r => r.status !== 'Closed' || item.roundIds?.includes(r.id)), item.roundIds).replace('name="ラウンド"', 'name="roundIds"');
+        const roundChoices = data.Rounds
+          .filter(round => round.status !== 'Closed' || item.roundIds?.includes(round.id))
+          .sort((a, b) => Number(b.status === 'Active') - Number(a.status === 'Active'))
+          .map(round => ({id: round.id, name: `${round.name}（${roundStatus[round.status] || round.status}）`}));
+        html += select('ラウンド', roundChoices, item.roundIds).replace('name="ラウンド"', 'name="roundIds"');
       } else {
         html += field('名前', 'name', item.name || '');
         if (name !== 'Members') html += field('説明', 'description', item.description || '', 'textarea');

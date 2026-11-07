@@ -115,6 +115,19 @@ test('reads moved columns, writes by ID, and preserves custom cells', async () =
   await assert.rejects(store.save('Tasks', {...before, title: '古い変更'}, JSON.stringify(before)), /変更されました/);
 });
 
+test('moves a task from a planned round to the active round', async () => {
+  const {SheetStore} = await import('../dist/server/sheets/store.js');
+  const {rows, gateway} = fixture();
+  rows.Tasks[1][1] = 'Sprint 2';
+  rows.Tasks[1][11] = 'r2';
+  const store = new SheetStore(gateway);
+  const task = (await store.read()).Tasks[0];
+  const updated = await store.save('Tasks', {...task, roundIds: ['r1']}, JSON.stringify(task));
+  assert.deepEqual(updated.Tasks[0].roundIds, ['r1']);
+  assert.equal(rows.Tasks[1][1], 'Sprint 1');
+  assert.equal(rows.Tasks[1][11], 'r1');
+});
+
 test('saving a task clears legacy ID notes', async () => {
   const {SheetStore} = await import('../dist/server/sheets/store.js');
   const {notes, gateway} = fixture();
