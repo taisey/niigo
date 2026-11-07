@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type {DataSnapshot} from '../../web/api-generated/models/DataSnapshot.js';
+import type {DataSnapshot} from '../../ui/api-generated/models/DataSnapshot.js';
 import type {Sheet, SheetCell, SheetsGateway, Spreadsheet} from './types.js';
 
 type SheetName = keyof DataSnapshot;
