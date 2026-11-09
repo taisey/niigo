@@ -109,3 +109,80 @@ label { display: grid; gap: 4px; margin: 10px 0; font-size: .9rem; }
   .group-task-list { margin-left: 0; }
   .group-task-date { display: none; }
 }
+
+/* Astryx workspace layout. Component colors and radii come from the neutral theme. */
+body { background: var(--color-background-body); color: var(--color-text-primary); font-family: var(--font-family-body); }
+.app-shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); max-width: none; min-height: 100vh; margin: 0; padding: 0; }
+.app-sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; padding: 30px 17px 22px; background: var(--color-background-surface); border-right: 1px solid var(--color-border); }
+.brand-lockup { padding: 2px 12px 42px; }
+.brand img { height: 37px; }
+.brand-subtitle { display: block; margin-top: 8px; color: var(--color-text-secondary); font-size: 10px; font-weight: 700; letter-spacing: .18em; }
+.nav-caption { padding: 0 12px; color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.main-nav { display: grid; gap: 5px; margin: 13px 0 0; }
+.main-nav .sidebar-nav-button { display: flex; justify-content: flex-start; width: 100%; height: 42px; padding: 0 13px; border-radius: var(--radius-element); font-size: 13px; font-weight: 600; }
+.main-nav .sidebar-nav-button[data-variant="primary"] { box-shadow: none; }
+.sidebar-note { display: flex; align-items: center; gap: 9px; margin-top: auto; padding: 13px 11px 0; border-top: 1px solid var(--color-border); color: var(--color-text-secondary); font-size: 11px; }
+.sidebar-note-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); }
+.app-workspace { min-width: 0; }
+.app-header { height: 68px; padding: 0 36px; border-bottom: 1px solid var(--color-border); background: var(--color-background-surface); }
+.breadcrumb { color: var(--color-text-secondary); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.breadcrumb span { margin: 0 9px; color: var(--color-text-disabled); }
+.app-workspace > main { max-width: 1450px; margin: 0 auto; padding: 35px 36px 64px; }
+.app-workspace > .error { margin: 16px 36px 0; }
+.toolbar { margin-bottom: 22px; }
+.toolbar h2, .app-workspace > main > h2 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -.035em; line-height: 1.25; }
+.toolbar .muted { margin-top: 7px; }
+.dashboard-desktop-hint { font-size: 12px; }
+.overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; margin: 22px 0 27px; }
+.overview-card { display: flex; flex-direction: column; justify-content: space-between; min-height: 112px; border: 1px solid var(--color-border); background: var(--color-background-surface); }
+.overview-label { color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+.overview-value { color: var(--color-text-primary); font-size: 32px; font-weight: 700; letter-spacing: -.05em; line-height: 1; }
+.overview-progress .overview-value { color: var(--color-text-blue); }
+.overview-done .overview-value { color: var(--color-text-green); }
+.task-filters { margin: 0 0 18px; padding: 13px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-surface); }
+.task-filters label { margin: 0; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+.task-filter-count { margin-left: auto; font-size: 12px; }
+.kanban { gap: 16px; margin-top: 0; }
+.kanban-column { min-height: 300px; padding: 15px; border: 1px solid var(--color-border); border-radius: var(--radius-container); background: color-mix(in srgb, var(--color-background-muted) 65%, var(--color-background-surface)); }
+.kanban-column > h3, .mobile-dashboard-column > h3 { margin: 2px 2px 17px; font-size: 13px; font-weight: 700; }
+.count { min-width: 25px; height: 25px; padding: 0 5px; background: var(--color-background-surface); color: var(--color-text-secondary); font-size: 11px; }
+.kanban-category h4 { margin-bottom: 10px; padding: 0 2px; font-size: 11px; }
+.kanban-task-row { min-height: 82px; padding: 14px; border-color: var(--color-border); border-radius: var(--radius-element); background: var(--color-background-card); box-shadow: 0 2px 6px var(--color-shadow); }
+.kanban-task-row strong { font-size: 13px; line-height: 1.45; }
+.kanban-task-row .muted { font-size: 11px; }
+.kanban-task-row:hover, .task-row-clickable:hover { border-color: var(--color-border-emphasized); box-shadow: var(--shadow-low); }
+.subnav { gap: 5px; margin: 22px 0 23px; padding: 5px; width: fit-content; border: 1px solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-surface); }
+.subnav [data-slot="button"] { border-color: transparent; box-shadow: none; }
+.task-list, .entity-list { padding: 4px 17px; border: 1px solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-surface); }
+.task-row { padding: 17px 12px; }
+.group-section + .group-section { margin-top: 0; }
+.group-task-list { border-radius: var(--radius-element); }
+.status-progress { color: var(--color-text-blue); background: var(--color-background-blue); }
+.status-done { color: var(--color-text-green); background: var(--color-background-green); }
+[data-slot="dialog-content"].editor-dialog, [data-slot="dialog-content"].detail-dialog { border-radius: var(--radius-container); }
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 190px minmax(0, 1fr); }
+  .app-header { padding: 0 24px; }
+  .app-workspace > main { padding: 29px 24px 50px; }
+}
+@media (max-width: 650px) {
+  .app-shell { display: block; }
+  .app-sidebar { position: static; height: auto; padding: 12px 16px 10px; border-right: 0; border-bottom: 1px solid var(--color-border); }
+  .brand-lockup { padding: 0; }
+  .brand img { height: 30px; }
+  .brand-subtitle, .nav-caption, .sidebar-note { display: none; }
+  .main-nav { display: flex; gap: 7px; margin: 13px 0 0; }
+  .main-nav .sidebar-nav-button { width: auto; height: 35px; padding: 0 11px; font-size: 12px; }
+  .app-header { height: 50px; padding: 0 17px; }
+  .app-workspace > main { padding: 24px 17px 42px; }
+  .app-workspace > .error { margin: 12px 17px 0; }
+  .toolbar h2, .app-workspace > main > h2 { font-size: 23px; }
+  .overview-grid { gap: 9px; margin: 17px 0 19px; }
+  .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .overview-tasks { grid-column: 1 / -1; min-height: 88px; }
+  .overview-card { min-height: 96px; }
+  .overview-value { font-size: 27px; }
+  .task-filters { padding: 12px; }
+  .task-filter-count { margin-left: 0; }
+  .subnav { max-width: 100%; overflow-x: auto; }
+}

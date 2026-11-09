@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState} from 'react';
 import type {DataSnapshot, Task} from '../api-generated/index.js';
-import {Button} from '@/components/button';
+import {Button as AstryxButton} from '@astryxdesign/core/Button';
+import {LayoutDashboard, ListTodo, RefreshCw} from 'lucide-react';
 import Dashboard from '@/features/dashboard/Dashboard';
 import TaskManagement from '@/features/task-management/TaskManagement';
 import TaskDetail from '@/features/task-management/tasks/TaskDetail';
@@ -81,15 +82,21 @@ export default function App() {
   const detailTask = taskDetailId ? data.Tasks.find(task => task.id === taskDetailId) || null : null;
 
   return <div className="app-shell">
-    <header className="app-header"><h1 className="brand"><img src="/niigo-logo.svg" alt="NIIGO" width="690" height="220" /></h1>
-      <Button variant="outline" onClick={() => void load()}>更新</Button>
-    </header>
-    {error && <div role="alert" className="error">{error}</div>}
-    <nav className="main-nav" aria-label="メイン">
-      <Button variant={view === 'dashboard' ? 'default' : 'outline'} onClick={() => changeView('dashboard')}>ダッシュボード</Button>
-      <Button variant={view !== 'dashboard' ? 'default' : 'outline'} onClick={() => changeView('tasks')}>タスク管理</Button>
-    </nav>
-    <main aria-live="polite">
+    <aside className="app-sidebar">
+      <div className="brand-lockup"><h1 className="brand"><img src="/niigo-logo.svg" alt="NIIGO" width="690" height="220" /></h1><span className="brand-subtitle">TEAM WORKSPACE</span></div>
+      <span className="nav-caption">ワークスペース</span>
+      <nav className="main-nav" aria-label="メイン">
+        <AstryxButton label="ダッシュボード" variant={view === 'dashboard' ? 'primary' : 'ghost'} icon={<LayoutDashboard size={17} />} className="sidebar-nav-button" onClick={() => changeView('dashboard')} />
+        <AstryxButton label="タスク管理" variant={view !== 'dashboard' ? 'primary' : 'ghost'} icon={<ListTodo size={17} />} className="sidebar-nav-button" onClick={() => changeView('tasks')} />
+      </nav>
+      <div className="sidebar-note"><span className="sidebar-note-dot" />チームの仕事を、ひとつに。</div>
+    </aside>
+    <div className="app-workspace">
+      <header className="app-header"><div className="breadcrumb">WORKSPACE <span>/</span> {view === 'dashboard' ? 'ダッシュボード' : 'タスク管理'}</div>
+        <AstryxButton label="更新" variant="secondary" icon={<RefreshCw size={15} />} onClick={() => void load()} />
+      </header>
+      {error && <div role="alert" className="error">{error}</div>}
+      <main aria-live="polite">
       {loading ? '読み込み中…' : view === 'dashboard'
         ? <Dashboard data={data} onOpenTask={setTaskDetailId} onStatusChange={(task, status) => { void statusChange(task, status); }} />
         : <TaskManagement data={data} view={view} onView={changeView} onEdit={openEditor} onOpenTask={setTaskDetailId}
@@ -98,7 +105,8 @@ export default function App() {
               const active = data.Rounds.find(round => round.status === 'Active');
               if (active) setRoundAction({closingId: active.id, switchingToId: id});
             }} onReorder={reorder} />}
-    </main>
+      </main>
+    </div>
     {detailTask && <TaskDetail key={`${detailTask.id}:${detailTask.status}`} task={detailTask} data={data} onClose={() => setTaskDetailId(null)}
       onEdit={id => { setTaskDetailId(null); openEditor('Tasks', id); }}
       onStatusSave={statusChange} />}
