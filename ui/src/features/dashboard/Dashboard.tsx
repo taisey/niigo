@@ -2,6 +2,7 @@ import {useState, type DragEvent, type KeyboardEvent} from 'react';
 import type {DataSnapshot, Task} from '../../../api-generated/index.js';
 import {Button} from '@/components/button';
 import {Card} from '@/components/card';
+import {Card as AstryxCard} from '@astryxdesign/core/Card';
 import {NativeSelect, NativeSelectOption} from '@/components/native-select';
 import {taskStatus, tasksByCategory, unsetFilter, validLinkedIds} from '@/lib/model';
 
@@ -58,6 +59,13 @@ export default function Dashboard({data, onOpenTask, onStatusChange}: Props) {
 
   return <>
     <div className="toolbar"><div><h2>ダッシュボード</h2><p className="muted">{heading}</p><p className="muted dashboard-desktop-hint">タスクをドラッグしてステータスを変更できます。</p></div></div>
+    <div className="overview-grid" aria-label="タスクの概要">
+      {[['進行中のラウンド', active.length, 'rounds'], ['対象タスク', activeTasks.length, 'tasks'], ['進行中', activeTasks.filter(task => task.status === 'In Progress').length, 'progress'], ['完了', activeTasks.filter(task => task.status === 'Done').length, 'done']].map(([label, count, kind]) =>
+        <AstryxCard key={kind} className={`overview-card overview-${kind}`} padding={4}>
+          <span className="overview-label">{label}</span><strong className="overview-value">{count}</strong>
+        </AstryxCard>
+      )}
+    </div>
     <div className="task-filters">
       <label>担当者
         <NativeSelect value={selectedAssignee} onChange={event => setAssigneeId(event.target.value)}>
